@@ -1,0 +1,7 @@
+C:\VulkanSDK\1.4.309.0\Bin\glslangValidator.exe meshfvf.vert.glsl -V --target-env vulkan1.2 -o meshfvf.vert.spv -S vert
+C:\VulkanSDK\1.4.309.0\Bin\glslangValidator.exe mesh.vert.glsl -V --target-env vulkan1.2 -o mesh.vert.spv -S vert
+C:\VulkanSDK\1.4.309.0\Bin\glslangValidator.exe mesh.frag.glsl -V --target-env vulkan1.2 -o mesh.frag.spv -S frag
+C:\VulkanSDK\1.4.309.0\Bin\glslangValidator.exe meshlet.mesh.glsl -V --target-env vulkan1.2 -o meshlet.mesh.spv -S mesh
+C:\VulkanSDK\1.4.309.0\Bin\glslangValidator.exe meshlet.task.glsl -V --target-env vulkan1.2 -o meshlet.task.spv -S task
+C:\VulkanSDK\1.4.309.0\Bin\glslangValidator.exe drawcull.comp.glsl -V --target-env vulkan1.2 -o drawcull.comp.spv -S comp
+C:\VulkanSDK\1.4.309.0\Bin\spirv-dis.exe meshlet.mesh.spv -o meshlet.mesh.txt
