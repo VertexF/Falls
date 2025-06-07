@@ -63,6 +63,13 @@ VkBool32 VKAPI_CALL debugReportCallback(VkDebugReportFlagsEXT flags, VkDebugRepo
     if (strstr(pMessage, "VkPhysicalDevice8BitStorageFeaturesKHR::uniformAndStorageBuffer8BitAccess"))
         return VK_FALSE;
 
+    // This silences warnings like "For optimal performance image 0x3b layout should be VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL instead of GENERAL"
+    // We'll assume other performance warnings are also not useful.
+    if (flags & VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT) 
+    {
+        return VK_FALSE;
+    }
+
     const char* type = (flags & VK_DEBUG_REPORT_ERROR_BIT_EXT) 
                        ? "ERROR" 
                        : (flags & (VK_DEBUG_REPORT_WARNING_BIT_EXT | VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT))

@@ -1,0 +1,559 @@
+; SPIR-V
+; Version: 1.0
+; Generator: Khronos Glslang Reference Front End; 11
+; Bound: 300
+; Schema: 0
+               OpCapability DrawParameters
+               OpCapability StorageBuffer16BitAccess
+               OpCapability UniformAndStorageBuffer8BitAccess
+               OpCapability MeshShadingNV
+               OpExtension "SPV_KHR_16bit_storage"
+               OpExtension "SPV_KHR_8bit_storage"
+               OpExtension "SPV_KHR_shader_draw_parameters"
+               OpExtension "SPV_NV_mesh_shader"
+          %1 = OpExtInstImport "GLSL.std.450"
+               OpMemoryModel Logical GLSL450
+               OpEntryPoint MeshNV %main "main" %gl_LocalInvocationID %_ %gl_WorkGroupID %gl_DrawIDARB %gl_MeshVerticesNV %colour %gl_PrimitiveCountNV
+               OpExecutionMode %main LocalSize 32 1 1
+               OpExecutionMode %main OutputVertices 64
+               OpExecutionMode %main OutputPrimitivesEXT 124
+               OpExecutionMode %main OutputTrianglesEXT
+               OpSource GLSL 450
+               OpSourceExtension "GL_ARB_shader_draw_parameters"
+               OpSourceExtension "GL_EXT_shader_16bit_storage"
+               OpSourceExtension "GL_EXT_shader_8bit_storage"
+               OpSourceExtension "GL_GOOGLE_cpp_style_line_directive"
+               OpSourceExtension "GL_GOOGLE_include_directive"
+               OpSourceExtension "GL_NV_mesh_shader"
+               OpName %main "main"
+               OpName %rotateQuat_vf3_vf4_ "rotateQuat(vf3;vf4;"
+               OpName %v "v"
+               OpName %q "q"
+               OpName %ti "ti"
+               OpName %gl_LocalInvocationID "gl_LocalInvocationID"
+               OpName %mi "mi"
+               OpName %block "block"
+               OpMemberName %block 0 "meshletIndices"
+               OpName %_ ""
+               OpName %gl_WorkGroupID "gl_WorkGroupID"
+               OpName %MeshDraw "MeshDraw"
+               OpMemberName %MeshDraw 0 "position"
+               OpMemberName %MeshDraw 1 "scale"
+               OpMemberName %MeshDraw 2 "orientation"
+               OpMemberName %MeshDraw 3 "meshIndex"
+               OpMemberName %MeshDraw 4 "vertexOffset"
+               OpName %meshDraw "meshDraw"
+               OpName %MeshDraw_0 "MeshDraw"
+               OpMemberName %MeshDraw_0 0 "position"
+               OpMemberName %MeshDraw_0 1 "scale"
+               OpMemberName %MeshDraw_0 2 "orientation"
+               OpMemberName %MeshDraw_0 3 "meshIndex"
+               OpMemberName %MeshDraw_0 4 "vertexOffset"
+               OpName %Draw "Draw"
+               OpMemberName %Draw 0 "draws"
+               OpName %__0 ""
+               OpName %MeshDrawCommand "MeshDrawCommand"
+               OpMemberName %MeshDrawCommand 0 "drawID"
+               OpMemberName %MeshDrawCommand 1 "indexCount"
+               OpMemberName %MeshDrawCommand 2 "instanceCount"
+               OpMemberName %MeshDrawCommand 3 "firstIndex"
+               OpMemberName %MeshDrawCommand 4 "vertexOffset"
+               OpMemberName %MeshDrawCommand 5 "firstInstance"
+               OpMemberName %MeshDrawCommand 6 "taskCount"
+               OpMemberName %MeshDrawCommand 7 "firstTask"
+               OpName %DrawCommands "DrawCommands"
+               OpMemberName %DrawCommands 0 "drawCommands"
+               OpName %__1 ""
+               OpName %gl_DrawIDARB "gl_DrawIDARB"
+               OpName %vertexCount "vertexCount"
+               OpName %Meshlet "Meshlet"
+               OpMemberName %Meshlet 0 "centre"
+               OpMemberName %Meshlet 1 "radius"
+               OpMemberName %Meshlet 2 "coneAxis"
+               OpMemberName %Meshlet 3 "coneCutoff"
+               OpMemberName %Meshlet 4 "dataOffset"
+               OpMemberName %Meshlet 5 "vertexCount"
+               OpMemberName %Meshlet 6 "triangleCount"
+               OpName %Meshlets "Meshlets"
+               OpMemberName %Meshlets 0 "meshlets"
+               OpName %__2 ""
+               OpName %triangleCount "triangleCount"
+               OpName %indexCount "indexCount"
+               OpName %dataOffset "dataOffset"
+               OpName %vertexOffset "vertexOffset"
+               OpName %indexOffset "indexOffset"
+               OpName %i "i"
+               OpName %vi "vi"
+               OpName %MeshletData "MeshletData"
+               OpMemberName %MeshletData 0 "meshletData"
+               OpName %__3 ""
+               OpName %position "position"
+               OpName %Vertex "Vertex"
+               OpMemberName %Vertex 0 "vx"
+               OpMemberName %Vertex 1 "vy"
+               OpMemberName %Vertex 2 "vz"
+               OpMemberName %Vertex 3 "nx"
+               OpMemberName %Vertex 4 "ny"
+               OpMemberName %Vertex 5 "nz"
+               OpMemberName %Vertex 6 "nw"
+               OpMemberName %Vertex 7 "tu"
+               OpMemberName %Vertex 8 "tv"
+               OpName %Vertices "Vertices"
+               OpMemberName %Vertices 0 "vertices"
+               OpName %__4 ""
+               OpName %normal "normal"
+               OpName %texcoord "texcoord"
+               OpName %gl_MeshPerVertexNV "gl_MeshPerVertexNV"
+               OpMemberName %gl_MeshPerVertexNV 0 "gl_Position"
+               OpMemberName %gl_MeshPerVertexNV 1 "gl_PointSize"
+               OpMemberName %gl_MeshPerVertexNV 2 "gl_ClipDistance"
+               OpMemberName %gl_MeshPerVertexNV 3 "gl_CullDistance"
+               OpMemberName %gl_MeshPerVertexNV 4 "gl_PositionPerViewNV"
+               OpMemberName %gl_MeshPerVertexNV 5 "gl_ClipDistancePerViewNV"
+               OpMemberName %gl_MeshPerVertexNV 6 "gl_CullDistancePerViewNV"
+               OpName %gl_MeshVerticesNV "gl_MeshVerticesNV"
+               OpName %Globals "Globals"
+               OpMemberName %Globals 0 "projection"
+               OpName %block_0 "block"
+               OpMemberName %block_0 0 "globals"
+               OpName %__5 ""
+               OpName %param "param"
+               OpName %param_0 "param"
+               OpName %colour "colour"
+               OpName %indexGroupCount "indexGroupCount"
+               OpName %i_0 "i"
+               OpName %gl_PrimitiveCountNV "gl_PrimitiveCountNV"
+               OpDecorate %gl_LocalInvocationID BuiltIn LocalInvocationId
+               OpDecorate %_arr_uint_uint_32 ArrayStride 4
+               OpDecorate %block Block
+               OpMemberDecorate %block 0 Offset 0
+               OpMemberDecorate %block 0 PerTaskNV
+               OpDecorate %gl_WorkGroupID BuiltIn WorkgroupId
+               OpMemberDecorate %MeshDraw_0 0 Offset 0
+               OpMemberDecorate %MeshDraw_0 1 Offset 12
+               OpMemberDecorate %MeshDraw_0 2 Offset 16
+               OpMemberDecorate %MeshDraw_0 3 Offset 32
+               OpMemberDecorate %MeshDraw_0 4 Offset 36
+               OpDecorate %_runtimearr_MeshDraw_0 ArrayStride 48
+               OpDecorate %Draw BufferBlock
+               OpMemberDecorate %Draw 0 NonWritable
+               OpMemberDecorate %Draw 0 Offset 0
+               OpDecorate %__0 NonWritable
+               OpDecorate %__0 Binding 1
+               OpDecorate %__0 DescriptorSet 0
+               OpMemberDecorate %MeshDrawCommand 0 Offset 0
+               OpMemberDecorate %MeshDrawCommand 1 Offset 4
+               OpMemberDecorate %MeshDrawCommand 2 Offset 8
+               OpMemberDecorate %MeshDrawCommand 3 Offset 12
+               OpMemberDecorate %MeshDrawCommand 4 Offset 16
+               OpMemberDecorate %MeshDrawCommand 5 Offset 20
+               OpMemberDecorate %MeshDrawCommand 6 Offset 24
+               OpMemberDecorate %MeshDrawCommand 7 Offset 28
+               OpDecorate %_runtimearr_MeshDrawCommand ArrayStride 32
+               OpDecorate %DrawCommands BufferBlock
+               OpMemberDecorate %DrawCommands 0 NonWritable
+               OpMemberDecorate %DrawCommands 0 Offset 0
+               OpDecorate %__1 NonWritable
+               OpDecorate %__1 Binding 0
+               OpDecorate %__1 DescriptorSet 0
+               OpDecorate %gl_DrawIDARB BuiltIn DrawIndex
+               OpDecorate %_arr_char_uint_3 ArrayStride 1
+               OpMemberDecorate %Meshlet 0 Offset 0
+               OpMemberDecorate %Meshlet 1 Offset 12
+               OpMemberDecorate %Meshlet 2 Offset 16
+               OpMemberDecorate %Meshlet 3 Offset 19
+               OpMemberDecorate %Meshlet 4 Offset 20
+               OpMemberDecorate %Meshlet 5 Offset 24
+               OpMemberDecorate %Meshlet 6 Offset 25
+               OpDecorate %_runtimearr_Meshlet ArrayStride 32
+               OpDecorate %Meshlets BufferBlock
+               OpMemberDecorate %Meshlets 0 NonWritable
+               OpMemberDecorate %Meshlets 0 Offset 0
+               OpDecorate %__2 NonWritable
+               OpDecorate %__2 Binding 2
+               OpDecorate %__2 DescriptorSet 0
+               OpDecorate %_runtimearr_uint ArrayStride 4
+               OpDecorate %MeshletData BufferBlock
+               OpMemberDecorate %MeshletData 0 NonWritable
+               OpMemberDecorate %MeshletData 0 Offset 0
+               OpDecorate %__3 NonWritable
+               OpDecorate %__3 Binding 3
+               OpDecorate %__3 DescriptorSet 0
+               OpMemberDecorate %Vertex 0 Offset 0
+               OpMemberDecorate %Vertex 1 Offset 4
+               OpMemberDecorate %Vertex 2 Offset 8
+               OpMemberDecorate %Vertex 3 Offset 12
+               OpMemberDecorate %Vertex 4 Offset 13
+               OpMemberDecorate %Vertex 5 Offset 14
+               OpMemberDecorate %Vertex 6 Offset 15
+               OpMemberDecorate %Vertex 7 Offset 16
+               OpMemberDecorate %Vertex 8 Offset 18
+               OpDecorate %_runtimearr_Vertex ArrayStride 20
+               OpDecorate %Vertices BufferBlock
+               OpMemberDecorate %Vertices 0 NonWritable
+               OpMemberDecorate %Vertices 0 Offset 0
+               OpDecorate %__4 NonWritable
+               OpDecorate %__4 Binding 4
+               OpDecorate %__4 DescriptorSet 0
+               OpDecorate %gl_MeshPerVertexNV Block
+               OpMemberDecorate %gl_MeshPerVertexNV 0 BuiltIn Position
+               OpMemberDecorate %gl_MeshPerVertexNV 1 BuiltIn PointSize
+               OpMemberDecorate %gl_MeshPerVertexNV 2 BuiltIn ClipDistance
+               OpMemberDecorate %gl_MeshPerVertexNV 3 BuiltIn CullDistance
+               OpMemberDecorate %gl_MeshPerVertexNV 4 BuiltIn PositionPerViewNV
+               OpMemberDecorate %gl_MeshPerVertexNV 4 PerViewNV
+               OpMemberDecorate %gl_MeshPerVertexNV 5 BuiltIn ClipDistancePerViewNV
+               OpMemberDecorate %gl_MeshPerVertexNV 5 PerViewNV
+               OpMemberDecorate %gl_MeshPerVertexNV 6 BuiltIn CullDistancePerViewNV
+               OpMemberDecorate %gl_MeshPerVertexNV 6 PerViewNV
+               OpMemberDecorate %Globals 0 ColMajor
+               OpMemberDecorate %Globals 0 MatrixStride 16
+               OpMemberDecorate %Globals 0 Offset 0
+               OpDecorate %block_0 Block
+               OpMemberDecorate %block_0 0 Offset 0
+               OpDecorate %colour Location 0
+               OpDecorate %gl_PrimitiveCountNV BuiltIn PrimitiveCountNV
+               OpDecorate %gl_WorkGroupSize BuiltIn WorkgroupSize
+       %void = OpTypeVoid
+          %3 = OpTypeFunction %void
+      %float = OpTypeFloat 32
+    %v3float = OpTypeVector %float 3
+%_ptr_Function_v3float = OpTypePointer Function %v3float
+    %v4float = OpTypeVector %float 4
+%_ptr_Function_v4float = OpTypePointer Function %v4float
+         %11 = OpTypeFunction %v3float %_ptr_Function_v3float %_ptr_Function_v4float
+    %float_2 = OpConstant %float 2
+       %uint = OpTypeInt 32 0
+     %uint_3 = OpConstant %uint 3
+%_ptr_Function_float = OpTypePointer Function %float
+%_ptr_Function_uint = OpTypePointer Function %uint
+     %v3uint = OpTypeVector %uint 3
+%_ptr_Input_v3uint = OpTypePointer Input %v3uint
+%gl_LocalInvocationID = OpVariable %_ptr_Input_v3uint Input
+     %uint_0 = OpConstant %uint 0
+%_ptr_Input_uint = OpTypePointer Input %uint
+    %uint_32 = OpConstant %uint 32
+%_arr_uint_uint_32 = OpTypeArray %uint %uint_32
+      %block = OpTypeStruct %_arr_uint_uint_32
+%_ptr_Input_block = OpTypePointer Input %block
+          %_ = OpVariable %_ptr_Input_block Input
+        %int = OpTypeInt 32 1
+      %int_0 = OpConstant %int 0
+%gl_WorkGroupID = OpVariable %_ptr_Input_v3uint Input
+   %MeshDraw = OpTypeStruct %v3float %float %v4float %uint %uint
+%_ptr_Function_MeshDraw = OpTypePointer Function %MeshDraw
+ %MeshDraw_0 = OpTypeStruct %v3float %float %v4float %uint %uint
+%_runtimearr_MeshDraw_0 = OpTypeRuntimeArray %MeshDraw_0
+       %Draw = OpTypeStruct %_runtimearr_MeshDraw_0
+%_ptr_Uniform_Draw = OpTypePointer Uniform %Draw
+        %__0 = OpVariable %_ptr_Uniform_Draw Uniform
+%MeshDrawCommand = OpTypeStruct %uint %uint %uint %uint %uint %uint %uint %uint
+%_runtimearr_MeshDrawCommand = OpTypeRuntimeArray %MeshDrawCommand
+%DrawCommands = OpTypeStruct %_runtimearr_MeshDrawCommand
+%_ptr_Uniform_DrawCommands = OpTypePointer Uniform %DrawCommands
+        %__1 = OpVariable %_ptr_Uniform_DrawCommands Uniform
+%_ptr_Input_int = OpTypePointer Input %int
+%gl_DrawIDARB = OpVariable %_ptr_Input_int Input
+%_ptr_Uniform_uint = OpTypePointer Uniform %uint
+%_ptr_Uniform_MeshDraw_0 = OpTypePointer Uniform %MeshDraw_0
+      %int_1 = OpConstant %int 1
+      %int_2 = OpConstant %int 2
+      %int_3 = OpConstant %int 3
+      %int_4 = OpConstant %int 4
+       %char = OpTypeInt 8 1
+%_arr_char_uint_3 = OpTypeArray %char %uint_3
+      %uchar = OpTypeInt 8 0
+    %Meshlet = OpTypeStruct %v3float %float %_arr_char_uint_3 %char %uint %uchar %uchar
+%_runtimearr_Meshlet = OpTypeRuntimeArray %Meshlet
+   %Meshlets = OpTypeStruct %_runtimearr_Meshlet
+%_ptr_Uniform_Meshlets = OpTypePointer Uniform %Meshlets
+        %__2 = OpVariable %_ptr_Uniform_Meshlets Uniform
+      %int_5 = OpConstant %int 5
+%_ptr_Uniform_uchar = OpTypePointer Uniform %uchar
+      %int_6 = OpConstant %int 6
+       %bool = OpTypeBool
+%_runtimearr_uint = OpTypeRuntimeArray %uint
+%MeshletData = OpTypeStruct %_runtimearr_uint
+%_ptr_Uniform_MeshletData = OpTypePointer Uniform %MeshletData
+        %__3 = OpVariable %_ptr_Uniform_MeshletData Uniform
+       %half = OpTypeFloat 16
+     %Vertex = OpTypeStruct %float %float %float %uchar %uchar %uchar %uchar %half %half
+%_runtimearr_Vertex = OpTypeRuntimeArray %Vertex
+   %Vertices = OpTypeStruct %_runtimearr_Vertex
+%_ptr_Uniform_Vertices = OpTypePointer Uniform %Vertices
+        %__4 = OpVariable %_ptr_Uniform_Vertices Uniform
+%_ptr_Uniform_float = OpTypePointer Uniform %float
+  %float_127 = OpConstant %float 127
+    %float_1 = OpConstant %float 1
+    %v2float = OpTypeVector %float 2
+%_ptr_Function_v2float = OpTypePointer Function %v2float
+      %int_7 = OpConstant %int 7
+%_ptr_Uniform_half = OpTypePointer Uniform %half
+      %int_8 = OpConstant %int 8
+     %uint_1 = OpConstant %uint 1
+%_arr_float_uint_1 = OpTypeArray %float %uint_1
+     %uint_4 = OpConstant %uint 4
+%_arr_v4float_uint_4 = OpTypeArray %v4float %uint_4
+%_arr__arr_float_uint_1_uint_4 = OpTypeArray %_arr_float_uint_1 %uint_4
+%gl_MeshPerVertexNV = OpTypeStruct %v4float %float %_arr_float_uint_1 %_arr_float_uint_1 %_arr_v4float_uint_4 %_arr__arr_float_uint_1_uint_4 %_arr__arr_float_uint_1_uint_4
+    %uint_64 = OpConstant %uint 64
+%_arr_gl_MeshPerVertexNV_uint_64 = OpTypeArray %gl_MeshPerVertexNV %uint_64
+%_ptr_Output__arr_gl_MeshPerVertexNV_uint_64 = OpTypePointer Output %_arr_gl_MeshPerVertexNV_uint_64
+%gl_MeshVerticesNV = OpVariable %_ptr_Output__arr_gl_MeshPerVertexNV_uint_64 Output
+%mat4v4float = OpTypeMatrix %v4float 4
+    %Globals = OpTypeStruct %mat4v4float
+    %block_0 = OpTypeStruct %Globals
+%_ptr_PushConstant_block_0 = OpTypePointer PushConstant %block_0
+        %__5 = OpVariable %_ptr_PushConstant_block_0 PushConstant
+%_ptr_PushConstant_mat4v4float = OpTypePointer PushConstant %mat4v4float
+%_ptr_Output_v4float = OpTypePointer Output %v4float
+%_arr_v4float_uint_64 = OpTypeArray %v4float %uint_64
+%_ptr_Output__arr_v4float_uint_64 = OpTypePointer Output %_arr_v4float_uint_64
+     %colour = OpVariable %_ptr_Output__arr_v4float_uint_64 Output
+  %float_0_5 = OpConstant %float 0.5
+        %257 = OpConstantComposite %v3float %float_0_5 %float_0_5 %float_0_5
+%_ptr_Output_uint = OpTypePointer Output %uint
+%gl_PrimitiveCountNV = OpVariable %_ptr_Output_uint Output
+%gl_WorkGroupSize = OpConstantComposite %v3uint %uint_32 %uint_1 %uint_1
+       %main = OpFunction %void None %3
+          %5 = OpLabel
+         %ti = OpVariable %_ptr_Function_uint Function
+         %mi = OpVariable %_ptr_Function_uint Function
+   %meshDraw = OpVariable %_ptr_Function_MeshDraw Function
+%vertexCount = OpVariable %_ptr_Function_uint Function
+%triangleCount = OpVariable %_ptr_Function_uint Function
+ %indexCount = OpVariable %_ptr_Function_uint Function
+ %dataOffset = OpVariable %_ptr_Function_uint Function
+%vertexOffset = OpVariable %_ptr_Function_uint Function
+%indexOffset = OpVariable %_ptr_Function_uint Function
+          %i = OpVariable %_ptr_Function_uint Function
+         %vi = OpVariable %_ptr_Function_uint Function
+   %position = OpVariable %_ptr_Function_v3float Function
+     %normal = OpVariable %_ptr_Function_v3float Function
+   %texcoord = OpVariable %_ptr_Function_v2float Function
+      %param = OpVariable %_ptr_Function_v3float Function
+    %param_0 = OpVariable %_ptr_Function_v4float Function
+%indexGroupCount = OpVariable %_ptr_Function_uint Function
+        %i_0 = OpVariable %_ptr_Function_uint Function
+         %44 = OpAccessChain %_ptr_Input_uint %gl_LocalInvocationID %uint_0
+         %45 = OpLoad %uint %44
+               OpStore %ti %45
+         %55 = OpAccessChain %_ptr_Input_uint %gl_WorkGroupID %uint_0
+         %56 = OpLoad %uint %55
+         %57 = OpAccessChain %_ptr_Input_uint %_ %int_0 %56
+         %58 = OpLoad %uint %57
+               OpStore %mi %58
+         %74 = OpLoad %int %gl_DrawIDARB
+         %76 = OpAccessChain %_ptr_Uniform_uint %__1 %int_0 %74 %int_0
+         %77 = OpLoad %uint %76
+         %79 = OpAccessChain %_ptr_Uniform_MeshDraw_0 %__0 %int_0 %77
+         %80 = OpLoad %MeshDraw_0 %79
+         %81 = OpCompositeExtract %v3float %80 0
+         %82 = OpAccessChain %_ptr_Function_v3float %meshDraw %int_0
+               OpStore %82 %81
+         %83 = OpCompositeExtract %float %80 1
+         %85 = OpAccessChain %_ptr_Function_float %meshDraw %int_1
+               OpStore %85 %83
+         %86 = OpCompositeExtract %v4float %80 2
+         %88 = OpAccessChain %_ptr_Function_v4float %meshDraw %int_2
+               OpStore %88 %86
+         %89 = OpCompositeExtract %uint %80 3
+         %91 = OpAccessChain %_ptr_Function_uint %meshDraw %int_3
+               OpStore %91 %89
+         %92 = OpCompositeExtract %uint %80 4
+         %94 = OpAccessChain %_ptr_Function_uint %meshDraw %int_4
+               OpStore %94 %92
+        %104 = OpLoad %uint %mi
+        %107 = OpAccessChain %_ptr_Uniform_uchar %__2 %int_0 %104 %int_5
+        %108 = OpLoad %uchar %107
+        %109 = OpUConvert %uint %108
+               OpStore %vertexCount %109
+        %111 = OpLoad %uint %mi
+        %113 = OpAccessChain %_ptr_Uniform_uchar %__2 %int_0 %111 %int_6
+        %114 = OpLoad %uchar %113
+        %115 = OpUConvert %uint %114
+               OpStore %triangleCount %115
+        %117 = OpLoad %uint %triangleCount
+        %118 = OpIMul %uint %117 %uint_3
+               OpStore %indexCount %118
+        %120 = OpLoad %uint %mi
+        %121 = OpAccessChain %_ptr_Uniform_uint %__2 %int_0 %120 %int_4
+        %122 = OpLoad %uint %121
+               OpStore %dataOffset %122
+        %124 = OpLoad %uint %dataOffset
+               OpStore %vertexOffset %124
+        %126 = OpLoad %uint %dataOffset
+        %127 = OpLoad %uint %vertexCount
+        %128 = OpIAdd %uint %126 %127
+               OpStore %indexOffset %128
+        %130 = OpLoad %uint %ti
+               OpStore %i %130
+               OpBranch %131
+        %131 = OpLabel
+               OpLoopMerge %133 %134 None
+               OpBranch %135
+        %135 = OpLabel
+        %136 = OpLoad %uint %i
+        %137 = OpLoad %uint %vertexCount
+        %139 = OpULessThan %bool %136 %137
+               OpBranchConditional %139 %132 %133
+        %132 = OpLabel
+        %145 = OpLoad %uint %vertexOffset
+        %146 = OpLoad %uint %i
+        %147 = OpIAdd %uint %145 %146
+        %148 = OpAccessChain %_ptr_Uniform_uint %__3 %int_0 %147
+        %149 = OpLoad %uint %148
+        %150 = OpAccessChain %_ptr_Function_uint %meshDraw %int_4
+        %151 = OpLoad %uint %150
+        %152 = OpIAdd %uint %149 %151
+               OpStore %vi %152
+        %160 = OpLoad %uint %vi
+        %162 = OpAccessChain %_ptr_Uniform_float %__4 %int_0 %160 %int_0
+        %163 = OpLoad %float %162
+        %164 = OpLoad %uint %vi
+        %165 = OpAccessChain %_ptr_Uniform_float %__4 %int_0 %164 %int_1
+        %166 = OpLoad %float %165
+        %167 = OpLoad %uint %vi
+        %168 = OpAccessChain %_ptr_Uniform_float %__4 %int_0 %167 %int_2
+        %169 = OpLoad %float %168
+        %170 = OpCompositeConstruct %v3float %163 %166 %169
+               OpStore %position %170
+        %172 = OpLoad %uint %vi
+        %173 = OpAccessChain %_ptr_Uniform_uchar %__4 %int_0 %172 %int_3
+        %174 = OpLoad %uchar %173
+        %175 = OpUConvert %uint %174
+        %176 = OpBitcast %int %175
+        %177 = OpConvertSToF %float %176
+        %178 = OpLoad %uint %vi
+        %179 = OpAccessChain %_ptr_Uniform_uchar %__4 %int_0 %178 %int_4
+        %180 = OpLoad %uchar %179
+        %181 = OpUConvert %uint %180
+        %182 = OpBitcast %int %181
+        %183 = OpConvertSToF %float %182
+        %184 = OpLoad %uint %vi
+        %185 = OpAccessChain %_ptr_Uniform_uchar %__4 %int_0 %184 %int_5
+        %186 = OpLoad %uchar %185
+        %187 = OpUConvert %uint %186
+        %188 = OpBitcast %int %187
+        %189 = OpConvertSToF %float %188
+        %190 = OpCompositeConstruct %v3float %177 %183 %189
+        %192 = OpCompositeConstruct %v3float %float_127 %float_127 %float_127
+        %193 = OpFDiv %v3float %190 %192
+        %195 = OpCompositeConstruct %v3float %float_1 %float_1 %float_1
+        %196 = OpFSub %v3float %193 %195
+               OpStore %normal %196
+        %200 = OpLoad %uint %vi
+        %203 = OpAccessChain %_ptr_Uniform_half %__4 %int_0 %200 %int_7
+        %204 = OpLoad %half %203
+        %205 = OpFConvert %float %204
+        %206 = OpLoad %uint %vi
+        %208 = OpAccessChain %_ptr_Uniform_half %__4 %int_0 %206 %int_8
+        %209 = OpLoad %half %208
+        %210 = OpFConvert %float %209
+        %211 = OpCompositeConstruct %v2float %205 %210
+               OpStore %texcoord %211
+        %222 = OpLoad %uint %i
+        %229 = OpAccessChain %_ptr_PushConstant_mat4v4float %__5 %int_0 %int_0
+        %230 = OpLoad %mat4v4float %229
+        %232 = OpLoad %v3float %position
+               OpStore %param %232
+        %234 = OpAccessChain %_ptr_Function_v4float %meshDraw %int_2
+        %235 = OpLoad %v4float %234
+               OpStore %param_0 %235
+        %236 = OpFunctionCall %v3float %rotateQuat_vf3_vf4_ %param %param_0
+        %237 = OpAccessChain %_ptr_Function_float %meshDraw %int_1
+        %238 = OpLoad %float %237
+        %239 = OpVectorTimesScalar %v3float %236 %238
+        %240 = OpAccessChain %_ptr_Function_v3float %meshDraw %int_0
+        %241 = OpLoad %v3float %240
+        %242 = OpFAdd %v3float %239 %241
+        %243 = OpCompositeExtract %float %242 0
+        %244 = OpCompositeExtract %float %242 1
+        %245 = OpCompositeExtract %float %242 2
+        %246 = OpCompositeConstruct %v4float %243 %244 %245 %float_1
+        %247 = OpMatrixTimesVector %v4float %230 %246
+        %249 = OpAccessChain %_ptr_Output_v4float %gl_MeshVerticesNV %222 %int_0
+               OpStore %249 %247
+        %253 = OpLoad %uint %i
+        %254 = OpLoad %v3float %normal
+        %256 = OpVectorTimesScalar %v3float %254 %float_0_5
+        %258 = OpFAdd %v3float %256 %257
+        %259 = OpCompositeExtract %float %258 0
+        %260 = OpCompositeExtract %float %258 1
+        %261 = OpCompositeExtract %float %258 2
+        %262 = OpCompositeConstruct %v4float %259 %260 %261 %float_1
+        %263 = OpAccessChain %_ptr_Output_v4float %colour %253
+               OpStore %263 %262
+               OpBranch %134
+        %134 = OpLabel
+        %264 = OpLoad %uint %i
+        %265 = OpIAdd %uint %264 %uint_32
+               OpStore %i %265
+               OpBranch %131
+        %133 = OpLabel
+        %267 = OpLoad %uint %indexCount
+        %268 = OpIAdd %uint %267 %uint_3
+        %269 = OpUDiv %uint %268 %uint_4
+               OpStore %indexGroupCount %269
+        %271 = OpLoad %uint %ti
+               OpStore %i_0 %271
+               OpBranch %272
+        %272 = OpLabel
+               OpLoopMerge %274 %275 None
+               OpBranch %276
+        %276 = OpLabel
+        %277 = OpLoad %uint %i_0
+        %278 = OpLoad %uint %indexGroupCount
+        %279 = OpULessThan %bool %277 %278
+               OpBranchConditional %279 %273 %274
+        %273 = OpLabel
+        %280 = OpLoad %uint %i_0
+        %281 = OpIMul %uint %280 %uint_4
+        %282 = OpLoad %uint %indexOffset
+        %283 = OpLoad %uint %i_0
+        %284 = OpIAdd %uint %282 %283
+        %285 = OpAccessChain %_ptr_Uniform_uint %__3 %int_0 %284
+        %286 = OpLoad %uint %285
+               OpWritePackedPrimitiveIndices4x8NV %281 %286
+               OpBranch %275
+        %275 = OpLabel
+        %287 = OpLoad %uint %i_0
+        %288 = OpIAdd %uint %287 %uint_32
+               OpStore %i_0 %288
+               OpBranch %272
+        %274 = OpLabel
+        %289 = OpLoad %uint %ti
+        %290 = OpIEqual %bool %289 %uint_0
+               OpSelectionMerge %292 None
+               OpBranchConditional %290 %291 %292
+        %291 = OpLabel
+        %295 = OpLoad %uint %mi
+        %296 = OpAccessChain %_ptr_Uniform_uchar %__2 %int_0 %295 %int_6
+        %297 = OpLoad %uchar %296
+        %298 = OpUConvert %uint %297
+               OpStore %gl_PrimitiveCountNV %298
+               OpBranch %292
+        %292 = OpLabel
+               OpReturn
+               OpFunctionEnd
+%rotateQuat_vf3_vf4_ = OpFunction %v3float None %11
+          %v = OpFunctionParameter %_ptr_Function_v3float
+          %q = OpFunctionParameter %_ptr_Function_v4float
+         %15 = OpLabel
+         %16 = OpLoad %v3float %v
+         %18 = OpLoad %v4float %q
+         %19 = OpVectorShuffle %v3float %18 %18 0 1 2
+         %20 = OpLoad %v4float %q
+         %21 = OpVectorShuffle %v3float %20 %20 0 1 2
+         %22 = OpLoad %v3float %v
+         %23 = OpExtInst %v3float %1 Cross %21 %22
+         %27 = OpAccessChain %_ptr_Function_float %q %uint_3
+         %28 = OpLoad %float %27
+         %29 = OpLoad %v3float %v
+         %30 = OpVectorTimesScalar %v3float %29 %28
+         %31 = OpFAdd %v3float %23 %30
+         %32 = OpExtInst %v3float %1 Cross %19 %31
+         %33 = OpVectorTimesScalar %v3float %32 %float_2
+         %34 = OpFAdd %v3float %16 %33
+               OpReturnValue %34
+               OpFunctionEnd

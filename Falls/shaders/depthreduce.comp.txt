@@ -1,0 +1,67 @@
+; SPIR-V
+; Version: 1.5
+; Generator: Khronos Glslang Reference Front End; 11
+; Bound: 39
+; Schema: 0
+               OpCapability Shader
+          %1 = OpExtInstImport "GLSL.std.450"
+               OpMemoryModel Logical GLSL450
+               OpEntryPoint GLCompute %main "main" %gl_GlobalInvocationID %inImage %outImage
+               OpExecutionMode %main LocalSize 32 32 1
+               OpSource GLSL 450
+               OpName %main "main"
+               OpName %pos "pos"
+               OpName %gl_GlobalInvocationID "gl_GlobalInvocationID"
+               OpName %depth "depth"
+               OpName %inImage "inImage"
+               OpName %outImage "outImage"
+               OpDecorate %gl_GlobalInvocationID BuiltIn GlobalInvocationId
+               OpDecorate %inImage NonWritable
+               OpDecorate %inImage Binding 1
+               OpDecorate %inImage DescriptorSet 0
+               OpDecorate %outImage NonReadable
+               OpDecorate %outImage Binding 0
+               OpDecorate %outImage DescriptorSet 0
+               OpDecorate %gl_WorkGroupSize BuiltIn WorkgroupSize
+       %void = OpTypeVoid
+          %3 = OpTypeFunction %void
+       %uint = OpTypeInt 32 0
+     %v2uint = OpTypeVector %uint 2
+%_ptr_Function_v2uint = OpTypePointer Function %v2uint
+     %v3uint = OpTypeVector %uint 3
+%_ptr_Input_v3uint = OpTypePointer Input %v3uint
+%gl_GlobalInvocationID = OpVariable %_ptr_Input_v3uint Input
+      %float = OpTypeFloat 32
+    %v4float = OpTypeVector %float 4
+%_ptr_Function_v4float = OpTypePointer Function %v4float
+         %19 = OpTypeImage %float 2D 0 0 0 2 R32f
+%_ptr_UniformConstant_19 = OpTypePointer UniformConstant %19
+    %inImage = OpVariable %_ptr_UniformConstant_19 UniformConstant
+        %int = OpTypeInt 32 1
+      %int_1 = OpConstant %int 1
+      %v2int = OpTypeVector %int 2
+   %outImage = OpVariable %_ptr_UniformConstant_19 UniformConstant
+    %uint_32 = OpConstant %uint 32
+     %uint_1 = OpConstant %uint 1
+%gl_WorkGroupSize = OpConstantComposite %v3uint %uint_32 %uint_32 %uint_1
+       %main = OpFunction %void None %3
+          %5 = OpLabel
+        %pos = OpVariable %_ptr_Function_v2uint Function
+      %depth = OpVariable %_ptr_Function_v4float Function
+         %13 = OpLoad %v3uint %gl_GlobalInvocationID
+         %14 = OpVectorShuffle %v2uint %13 %13 0 1
+               OpStore %pos %14
+         %22 = OpLoad %19 %inImage
+         %23 = OpLoad %v2uint %pos
+         %27 = OpCompositeConstruct %v2int %int_1 %int_1
+         %28 = OpShiftRightLogical %v2uint %23 %27
+         %29 = OpBitcast %v2int %28
+         %30 = OpImageRead %v4float %22 %29
+               OpStore %depth %30
+         %32 = OpLoad %19 %outImage
+         %33 = OpLoad %v2uint %pos
+         %34 = OpBitcast %v2int %33
+         %35 = OpLoad %v4float %depth
+               OpImageWrite %32 %34 %35
+               OpReturn
+               OpFunctionEnd

@@ -169,9 +169,6 @@
     <None Include="..\extern\glfw\src\mappings.h.in">
       <Filter>glfw</Filter>
     </None>
-    <None Include="shaders\depthreduce.comp.glsl">
-      <Filter>shaders</Filter>
-    </None>
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="shaders\drawcull.comp.glsl">
@@ -187,6 +184,9 @@
       <Filter>shaders</Filter>
     </CustomBuild>
     <CustomBuild Include="shaders\meshlet.task.glsl">
+      <Filter>shaders</Filter>
+    </CustomBuild>
+    <CustomBuild Include="shaders\depthreduce.comp.glsl">
       <Filter>shaders</Filter>
     </CustomBuild>
   </ItemGroup>

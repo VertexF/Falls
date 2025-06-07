@@ -108,6 +108,12 @@
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
+    <CustomBuild>
+      <Command>$(VULKAN_SDK)\Bin\glslangValidator %(FullPath) -V --target-env vulkan1.2 -o shaders/%(Filename).spv</Command>
+      <Outputs>shaders/%(Filename).spv</Outputs>
+      <AdditionalInputs>shaders/*.h</AdditionalInputs>
+      <BuildInParallel>true</BuildInParallel>
+    </CustomBuild>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -131,6 +137,7 @@
     </CustomBuild>
     <CustomBuild>
       <AdditionalInputs>shaders/*.h</AdditionalInputs>
+      <BuildInParallel>true</BuildInParallel>
     </CustomBuild>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -209,7 +216,9 @@
     <CustomBuild Include="shaders\meshlet.task.glsl">
       <FileType>Document</FileType>
     </CustomBuild>
-    <None Include="shaders\depthreduce.comp.glsl" />
+    <CustomBuild Include="shaders\depthreduce.comp.glsl">
+      <FileType>Document</FileType>
+    </CustomBuild>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
