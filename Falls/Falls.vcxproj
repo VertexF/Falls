@@ -216,7 +216,10 @@
     <CustomBuild Include="shaders\meshlet.task.glsl">
       <FileType>Document</FileType>
     </CustomBuild>
-    <CustomBuild Include="shaders\depthreduce.comp.glsl">
+    <CustomBuild Include="shaders\drawculllate.comp.glsl">
+      <FileType>Document</FileType>
+    </CustomBuild>
+    <CustomBuild Include="shaders\drawreduce.comp.glsl">
       <FileType>Document</FileType>
     </CustomBuild>
   </ItemGroup>

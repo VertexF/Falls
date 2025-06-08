@@ -23,6 +23,20 @@ struct Globals
     mat4 projection;
 };
 
+struct DrawCullData 
+{
+    vec4 frustum[6];
+
+    uint drawCount;
+
+    int cullingEnabled;
+    int lodEnabled;
+    int occlusionEnabled;
+
+    float P00, P11, zNear;
+    float pyramidWidth, pyramidHeight;
+};
+
 struct MeshLod 
 {
     uint indexOffset;

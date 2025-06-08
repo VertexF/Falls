@@ -5,18 +5,13 @@
 
 #extension GL_GOOGLE_include_directive: require
 
-#extension GL_KHR_shader_subgroup_ballot: require
-
 #include "mesh.h"
 
 layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 
 layout(push_constant) uniform block
 {
-    vec4 frustum[6];
-    uint drawCount;
-    int cullingEnabled;
-    int lodEnabled;
+    DrawCullData cullData;
 };
 
 layout(binding = 0) readonly buffer Draws
@@ -39,11 +34,21 @@ layout(binding = 3) buffer DrawCommandCount
     uint drawCommandCount;
 };
 
+layout(binding = 4) buffer DrawVisibility
+{
+    uint drawVisibility[];
+};
+
 void main()
 {
     uint di = gl_GlobalInvocationID.x;
 
-    if(di >= drawCount)
+    if(di >= cullData.drawCount)
+    {
+        return;
+    }
+
+    if(drawVisibility[di] == 0)
     {
         return;
     }
@@ -57,10 +62,10 @@ void main()
     bool visible = true;
     for(int i = 0; i < 6; ++i)
     {
-        visible = visible && dot(frustum[i], vec4(centre, 1)) > -radius;
+        visible = visible && dot(cullData.frustum[i], vec4(centre, 1)) > -radius;
     }
 
-    visible = cullingEnabled == 1 ? visible : true;
+    visible = cullData.cullingEnabled == 1 ? visible : true;
 
     if(visible)
     {
@@ -69,7 +74,7 @@ void main()
         float lodDistance = log2(max(1, (distance(centre, vec3(0)) - radius)));
         uint lodIndex = clamp(int(lodDistance), 0, int(mesh.lodCount) - 1);
 
-        lodIndex = lodEnabled == 1 ? lodIndex : 0;
+        lodIndex = cullData.lodEnabled == 1 ? lodIndex : 0;
 
         // TODO: compiler doesn't seem to optimise this into a load directly from meshes array, so this is slow.
         MeshLod lod = meshes[meshIndex].lods[lodIndex];
