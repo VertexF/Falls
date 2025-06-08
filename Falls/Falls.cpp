@@ -22,7 +22,9 @@
 bool meshShadingEnabled = true;
 bool cullingEnabled = true;
 bool lodEnabled = true;
-bool debugPyramid = false;
+
+bool debugPyramid = true;
+int debugPyramidLevel = 4;
 
 VkSemaphore createSemaphore(VkDevice device)
 {
@@ -196,7 +198,7 @@ struct Geometry
     std::vector<Mesh> meshes;
 };
 
-struct DrawCullData 
+struct alignas(16) DrawCullData 
 {
     vec4 frustum[6];
 
@@ -204,6 +206,11 @@ struct DrawCullData
 
     int cullingEnabled;
     int lodEnabled;
+};
+
+struct alignas(16) DepthReduceData 
+{
+    vec2 imageSize;
 };
 
 size_t appendMeshlets(Geometry& result, const std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices) 
@@ -388,6 +395,10 @@ void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
         {
             debugPyramid = !debugPyramid;
         }
+        if (key >= GLFW_KEY_0 && key <= GLFW_KEY_9) 
+        {
+            debugPyramidLevel = key - GLFW_KEY_0;
+        }
     }
 }
 
@@ -494,6 +505,9 @@ int main(int argc, const char** argv)
     VkRenderPass renderPassLate = createRenderPass(device, swapchainFormat, depthFormat, /*late=*/ true);
     assert(renderPassLate);
 
+    VkSampler depthSampler = createSampler(device);
+    assert(depthSampler);
+
     bool rcs = false;
 
     Shader drawcullCS = {};
@@ -529,7 +543,7 @@ int main(int argc, const char** argv)
     Program drawcullProgram = createProgram(device, VK_PIPELINE_BIND_POINT_COMPUTE, { &drawcullCS }, sizeof(DrawCullData));
     VkPipeline drawcullPipeline = createComputePipeline(device, pipelineCache, drawcullCS, drawcullProgram.layout);
 
-    Program depthReduceProgram = createProgram(device, VK_PIPELINE_BIND_POINT_COMPUTE, { &depthreduceCS }, 0);
+    Program depthReduceProgram = createProgram(device, VK_PIPELINE_BIND_POINT_COMPUTE, { &depthreduceCS }, sizeof(DepthReduceData));
     VkPipeline depthreducePipeline = createComputePipeline(device, pipelineCache, depthreduceCS, depthReduceProgram.layout);
 
     Program meshProgram = createProgram(device, VK_PIPELINE_BIND_POINT_GRAPHICS, { &meshVS, &meshFS }, sizeof(Globals));
@@ -614,7 +628,7 @@ int main(int argc, const char** argv)
         uploadBuffer(device, commandPool, commandBuffer, queue, mdb, scratch, geometry.meshletData.data(), geometry.meshletData.size() * sizeof(uint32_t));
     }
 
-    uint32_t drawCount = 100'000;
+    uint32_t drawCount = 1'000'000;
     std::vector<MeshDraw> draws(drawCount);
 
     srand(42);
@@ -728,7 +742,7 @@ int main(int argc, const char** argv)
         vkCmdResetQueryPool(commandBuffer, queryPoolTimestamp, 0, 128);
         vkCmdWriteTimestamp(commandBuffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, queryPoolTimestamp, 0);
 
-        mat4 projection = perspectiveProjection(glm::radians(70.f), float(swapchain.width) / float(swapchain.height), 0.01f);
+        mat4 projection = perspectiveProjection(glm::radians(70.f), float(swapchain.width) / float(swapchain.height), 1.f);
         float drawDistance = 100;
 
         {
@@ -793,7 +807,7 @@ int main(int argc, const char** argv)
         clearColour[1].depthStencil = { 0.f, 0 };
 
         VkRenderPassBeginInfo passBeginInfo = { VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO };
-        passBeginInfo.renderPass = renderPassLate;
+        passBeginInfo.renderPass = renderPass;
         passBeginInfo.framebuffer = targetFB;
         passBeginInfo.renderArea.extent.width = swapchain.width;
         passBeginInfo.renderArea.extent.height = swapchain.height;
@@ -831,6 +845,8 @@ int main(int argc, const char** argv)
 
         vkCmdEndRenderPass(commandBuffer);
 
+        vkCmdWriteTimestamp(commandBuffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, queryPoolTimestamp, 4);
+
         VkImageMemoryBarrier depthReadBarriers[] =
         {
             imageBarrier(depthTarget.image, VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_ASPECT_DEPTH_BIT),
@@ -844,14 +860,18 @@ int main(int argc, const char** argv)
         for (uint32_t i = 0; i < depthPyramidLevels; ++i) 
         {
             DescriptorInfo sourceDepth = (i == 0)
-                ? DescriptorInfo(depthTarget.imageView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-                : DescriptorInfo(depthPyramidMips[i - 1], VK_IMAGE_LAYOUT_GENERAL);
+                ? DescriptorInfo(depthSampler, depthTarget.imageView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+                : DescriptorInfo(depthSampler, depthPyramidMips[i - 1], VK_IMAGE_LAYOUT_GENERAL);
 
             DescriptorInfo descriptors[] = { { depthPyramidMips[i], VK_IMAGE_LAYOUT_GENERAL }, sourceDepth };
             vkCmdPushDescriptorSetWithTemplateKHR(commandBuffer, depthReduceProgram.updateTemplate, depthReduceProgram.layout, 0, descriptors);
 
             uint32_t levelWidth = std::max(1u, (swapchain.width / 2) >> i);
             uint32_t levelHeight = std::max(1u, (swapchain.height / 2) >> i);
+
+            DepthReduceData reduceData = { vec2(levelWidth, levelHeight) };
+
+            vkCmdPushConstants(commandBuffer, depthReduceProgram.layout, depthReduceProgram.pushConstantStages, 0, sizeof(reduceData), &reduceData);
 
             vkCmdDispatch(commandBuffer, getGroupCount(levelWidth, depthreduceCS.localSizeX), getGroupCount(levelHeight, depthreduceCS.localSizeY), 1);
 
@@ -864,8 +884,10 @@ int main(int argc, const char** argv)
 
         vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT, VK_DEPENDENCY_BY_REGION_BIT, 0, 0, 0, 0, 1, &depthWriteBarrier);
 
+        vkCmdWriteTimestamp(commandBuffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, queryPoolTimestamp, 5);
+
         VkRenderPassBeginInfo passLateBeginInfo = { VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO };
-        passLateBeginInfo.renderPass = renderPass;
+        passLateBeginInfo.renderPass = renderPassLate;
         passLateBeginInfo.framebuffer = targetFB;
         passLateBeginInfo.renderArea.extent.width = swapchain.width;
         passLateBeginInfo.renderArea.extent.height = swapchain.height;
@@ -885,16 +907,14 @@ int main(int argc, const char** argv)
 
         if (debugPyramid) 
         {
-            uint32_t debugLevel = 0;
-
             VkImageBlit blitRegion = {};
             blitRegion.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-            blitRegion.srcSubresource.mipLevel = debugLevel;
+            blitRegion.srcSubresource.mipLevel = debugPyramidLevel;
             blitRegion.srcSubresource.layerCount = 1;
             blitRegion.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
             blitRegion.dstSubresource.layerCount = 1;
             blitRegion.srcOffsets[0] = { 0, 0, 0 };
-            blitRegion.srcOffsets[1] = { int32_t(std::max(1u, (swapchain.width / 2) >> debugLevel)), int32_t(std::max(1u, (swapchain.height / 2) >> debugLevel)), 1 };
+            blitRegion.srcOffsets[1] = { int32_t(std::max(1u, (swapchain.width / 2) >> debugPyramidLevel)), int32_t(std::max(1u, (swapchain.height / 2) >> debugPyramidLevel)), 1 };
             blitRegion.dstOffsets[0] = { 0, 0, 0 };
             blitRegion.dstOffsets[1] = { int32_t(swapchain.width), int32_t(swapchain.height), 1};
 
@@ -943,7 +963,7 @@ int main(int argc, const char** argv)
 
         VK_CHECK(vkDeviceWaitIdle(device));
 
-        uint64_t timestampResults[4] = {};
+        uint64_t timestampResults[6] = {};
         VK_CHECK(vkGetQueryPoolResults(device, queryPoolTimestamp, 0, ARRAYSIZE(timestampResults), sizeof(timestampResults), timestampResults, sizeof(timestampResults[0]), VK_QUERY_RESULT_64_BIT));
 
         uint32_t pipelineResults[1] = {};
@@ -954,6 +974,7 @@ int main(int argc, const char** argv)
         double frameGPUBegin = double(timestampResults[0]) * props.limits.timestampPeriod * 1e-6;
         double frameGPUEnd = double(timestampResults[1]) * props.limits.timestampPeriod * 1e-6;
         double cullGPUTime = double(timestampResults[3] - timestampResults[2]) * props.limits.timestampPeriod * 1e-6;
+        double pyramidGPUTime = double(timestampResults[5] - timestampResults[4]) * props.limits.timestampPeriod * 1e-6;
 
         double frameCPUEnd = glfwGetTime() * 1000;
 
@@ -964,8 +985,8 @@ int main(int argc, const char** argv)
         double drawsPerSec = double(drawCount) / double(frameGPUAvg * 1e-3);
 
         char title[256];
-        sprintf(title, "CPU : %.2f ms; GPU %.2f ms (cull: %.2f ms); Triangles %.1fM; %.1fB tri/sec, %.1fB draws/sec, mesh shadering %s, culling %s, level-of-detail %s", 
-            frameCPUAvg, frameGPUAvg, cullGPUTime, 
+        sprintf(title, "CPU : %.2f ms; GPU %.2f ms (cull: %.2f ms, pyramid: %.2f ms); Triangles %.1fM; %.1fB tri/sec, %.1fB draws/sec, mesh shadering %s, culling %s, level-of-detail %s", 
+            frameCPUAvg, frameGPUAvg, cullGPUTime, pyramidGPUTime,
             double(triangleCount) * 1e-6, trianglesPerSec * 1e-9, drawsPerSec * 1e-6, 
             meshShadingSupported && meshShadingEnabled ? "ON" : "OFF", cullingEnabled ? "ON" : "OFF", lodEnabled ? "ON" : "OFF");
         glfwSetWindowTitle(window, title);
@@ -1043,6 +1064,8 @@ int main(int argc, const char** argv)
         vkDestroyShaderModule(device, meshletTS.module, 0);
         vkDestroyShaderModule(device, meshletMS.module, 0);
     }
+
+    vkDestroySampler(device, depthSampler, 0);
 
     vkDestroyRenderPass(device, renderPass, 0);
     vkDestroyRenderPass(device, renderPassLate, 0);

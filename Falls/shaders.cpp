@@ -10,6 +10,7 @@
 // https://www.khronos.org/registry/spir-v/specs/1.0/SPIRV.pdf
 struct Id 
 {
+    // TODO: we could use opcode for this
     enum Kind { Unknown = 0, Variable, TypePointer, TypeStruct, TypeImage, TypeSampler, TypeSampledImage };
 
     Kind kind;
@@ -91,17 +92,20 @@ static void parseShader(Shader& shader, const uint32_t* code, uint32_t codeSize)
             case SpvExecutionModeLocalSize:
                 assert(wordCount == 6);
                 shader.localSizeX = insn[3];
-                shader.localSizeX = insn[4];
-                shader.localSizeX = insn[5];
+                shader.localSizeY = insn[4];
+                shader.localSizeZ = insn[5];
                 break;
             }
         }break;
+        // TODO: all type cases could be collapsed.
         case SpvOpTypeStruct: 
         {
             assert(wordCount >= 2);
 
             uint32_t id = insn[1];
             assert(id < idBound);
+
+            // TODO: verify that resources don't overlap (at least with diff types)
 
             assert(ids[id].kind == Id::Unknown);
             ids[id].kind = Id::TypeStruct;
@@ -168,7 +172,7 @@ static void parseShader(Shader& shader, const uint32_t* code, uint32_t codeSize)
 
     for (auto& id : ids) 
     {
-        if (id.kind == Id::Variable && (/*id.storageClass == SpvStorageClassStorageBuffer ||*/ id.storageClass == SpvStorageClassUniform || id.storageClass == SpvStorageClassUniformConstant))
+        if (id.kind == Id::Variable && (id.storageClass == SpvStorageClassStorageBuffer || id.storageClass == SpvStorageClassUniform || id.storageClass == SpvStorageClassUniformConstant))
         {
             assert(id.set == 0);
             assert(id.binding < 32);
@@ -191,7 +195,7 @@ static void parseShader(Shader& shader, const uint32_t* code, uint32_t codeSize)
                 shader.resourceMask |= 1 << id.binding;
                 break;
             case Id::TypeSampledImage:
-                shader.resourceTypes[id.binding] = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+                shader.resourceTypes[id.binding] = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
                 shader.resourceMask |= 1 << id.binding;
                 break;
             default:
