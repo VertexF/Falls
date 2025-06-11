@@ -10,10 +10,7 @@
 // https://www.khronos.org/registry/spir-v/specs/1.0/SPIRV.pdf
 struct Id 
 {
-    // TODO: we could use opcode for this
-    enum Kind { Unknown = 0, Variable, TypePointer, TypeStruct, TypeImage, TypeSampler, TypeSampledImage };
-
-    Kind kind;
+    uint32_t opcode;
     uint32_t typeID;
     uint32_t storageClass;
     uint32_t binding;
@@ -97,39 +94,9 @@ static void parseShader(Shader& shader, const uint32_t* code, uint32_t codeSize)
                 break;
             }
         }break;
-        // TODO: all type cases could be collapsed.
         case SpvOpTypeStruct: 
-        {
-            assert(wordCount >= 2);
-
-            uint32_t id = insn[1];
-            assert(id < idBound);
-
-            // TODO: verify that resources don't overlap (at least with diff types)
-
-            assert(ids[id].kind == Id::Unknown);
-            ids[id].kind = Id::TypeStruct;
-        } break;
         case SpvOpTypeImage:
-        {
-            assert(wordCount >= 2);
-
-            uint32_t id = insn[1];
-            assert(id < idBound);
-
-            assert(ids[id].kind == Id::Unknown);
-            ids[id].kind = Id::TypeImage;
-        }break;
         case SpvOpTypeSampler:
-        {
-            assert(wordCount >= 2);
-
-            uint32_t id = insn[1];
-            assert(id < idBound);
-
-            assert(ids[id].kind == Id::Unknown);
-            ids[id].kind = Id::TypeSampler;
-        }break;
         case SpvOpTypeSampledImage: 
         {
             assert(wordCount >= 2);
@@ -137,8 +104,8 @@ static void parseShader(Shader& shader, const uint32_t* code, uint32_t codeSize)
             uint32_t id = insn[1];
             assert(id < idBound);
 
-            assert(ids[id].kind == Id::Unknown);
-            ids[id].kind = Id::TypeSampledImage;
+            assert(ids[id].opcode == 0);
+            ids[id].opcode = opcode;
         }break;
         case SpvOpTypePointer:
         {
@@ -147,8 +114,8 @@ static void parseShader(Shader& shader, const uint32_t* code, uint32_t codeSize)
             uint32_t id = insn[1];
             assert(id < idBound);
 
-            assert(ids[id].typeID == Id::Unknown);
-            ids[id].kind = Id::TypePointer;
+            assert(ids[id].opcode == 0);
+            ids[id].opcode = opcode;
             ids[id].typeID = insn[3];
             ids[id].storageClass = insn[2];
         }break;
@@ -159,8 +126,8 @@ static void parseShader(Shader& shader, const uint32_t* code, uint32_t codeSize)
             uint32_t id = insn[2];
             assert(id < idBound);
 
-            assert(ids[id].kind == Id::Unknown);
-            ids[id].kind = Id::Variable;
+            assert(ids[id].opcode == 0);
+            ids[id].opcode = opcode;
             ids[id].typeID = insn[1];
             ids[id].storageClass = insn[3];
         } break;
@@ -172,29 +139,32 @@ static void parseShader(Shader& shader, const uint32_t* code, uint32_t codeSize)
 
     for (auto& id : ids) 
     {
-        if (id.kind == Id::Variable && (id.storageClass == SpvStorageClassStorageBuffer || id.storageClass == SpvStorageClassUniform || id.storageClass == SpvStorageClassUniformConstant))
+        if (id.opcode == SpvOpVariable && (id.storageClass == SpvStorageClassStorageBuffer || id.storageClass == SpvStorageClassUniform || id.storageClass == SpvStorageClassUniformConstant))
         {
             assert(id.set == 0);
             assert(id.binding < 32);
-            assert(ids[id.typeID].kind == Id::TypePointer);
+            assert(ids[id.typeID].opcode == SpvOpTypePointer);
             
-            Id::Kind typeKind = ids[ids[id.typeID].typeID].kind;
+            // TODO: verify that resources don't overlap (at least with diff type)
+            assert((shader.resourceMask & (1 << id.binding)) == 0);
+
+            uint32_t typeKind = ids[ids[id.typeID].typeID].opcode;
 
             switch (typeKind) 
             {
-            case Id::TypeStruct:
+            case SpvOpTypeStruct:
                 shader.resourceTypes[id.binding] = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
                 shader.resourceMask |= 1 << id.binding;
                 break;
-            case Id::TypeImage:
+            case SpvOpTypeImage:
                 shader.resourceTypes[id.binding] = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
                 shader.resourceMask |= 1 << id.binding;
                 break;
-            case Id::TypeSampler:
+            case SpvOpTypeSampler:
                 shader.resourceTypes[id.binding] = VK_DESCRIPTOR_TYPE_SAMPLER;
                 shader.resourceMask |= 1 << id.binding;
                 break;
-            case Id::TypeSampledImage:
+            case SpvOpTypeSampledImage:
                 shader.resourceTypes[id.binding] = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
                 shader.resourceMask |= 1 << id.binding;
                 break;
@@ -203,7 +173,7 @@ static void parseShader(Shader& shader, const uint32_t* code, uint32_t codeSize)
             }
         }
 
-        if (id.kind == Id::Variable && id.storageClass == SpvStorageClassPushConstant) 
+        if (id.opcode == SpvOpVariable && id.storageClass == SpvStorageClassPushConstant) 
         {
             shader.usePushConstants = true;
         }
@@ -377,9 +347,28 @@ bool loadShader(Shader& shader, VkDevice device, const char* path)
     return true;
 }
 
-VkPipeline createGraphicsPipeline(VkDevice device, VkPipelineCache pipelineCache, VkRenderPass renderPass, Shaders shaders,
-    VkPipelineLayout layout)
+static VkSpecializationInfo fillSpecialisationInfo(std::vector<VkSpecializationMapEntry>& entries, const Constants& constants) 
 {
+    for (size_t i = 0; i < constants.size(); ++i) 
+    {
+        entries.push_back({ uint32_t(i), uint32_t(i * 4), 4 });
+    }
+
+    VkSpecializationInfo result = {};
+    result.mapEntryCount = uint32_t(entries.size());
+    result.pMapEntries = entries.data();
+    result.dataSize = constants.size() * sizeof(int);
+    result.pData = constants.begin();
+
+    return result;
+}
+
+VkPipeline createGraphicsPipeline(VkDevice device, VkPipelineCache pipelineCache, VkRenderPass renderPass, Shaders shaders,
+    VkPipelineLayout layout, Constants constants)
+{
+    std::vector<VkSpecializationMapEntry> specialisationEntries;
+    VkSpecializationInfo specialisationInfo = fillSpecialisationInfo(specialisationEntries, constants);
+
     VkGraphicsPipelineCreateInfo createInfo = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO };
 
     std::vector<VkPipelineShaderStageCreateInfo> stages;
@@ -389,6 +378,7 @@ VkPipeline createGraphicsPipeline(VkDevice device, VkPipelineCache pipelineCache
         stage.stage = shader->stage;
         stage.module = shader->module;
         stage.pName = "main";
+        stage.pSpecializationInfo = &specialisationInfo;
 
         stages.push_back(stage);
     }
@@ -448,16 +438,20 @@ VkPipeline createGraphicsPipeline(VkDevice device, VkPipelineCache pipelineCache
     return pipeline;
 }
 
-VkPipeline createComputePipeline(VkDevice device, VkPipelineCache pipelineCache, const Shader& shader, VkPipelineLayout layout)
+VkPipeline createComputePipeline(VkDevice device, VkPipelineCache pipelineCache, const Shader& shader, VkPipelineLayout layout, Constants constants)
 {
     assert(shader.stage == VK_SHADER_STAGE_COMPUTE_BIT);
 
     VkComputePipelineCreateInfo createInfo = { VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO };
+
+    std::vector<VkSpecializationMapEntry> specialisationEntries;
+    VkSpecializationInfo specialisationInfo = fillSpecialisationInfo(specialisationEntries, constants);
     
     VkPipelineShaderStageCreateInfo stage = { VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO };
     stage.stage = shader.stage;
     stage.module = shader.module;
     stage.pName = "main";
+    stage.pSpecializationInfo = &specialisationInfo;
 
     createInfo.stage = stage;
     createInfo.layout = layout;

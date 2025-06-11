@@ -7,6 +7,8 @@
 
 #include "mesh.h"
 
+layout(constant_id = 0) const bool LATE = false;
+
 layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 
 layout(push_constant) uniform block
@@ -39,6 +41,31 @@ layout(binding = 4) buffer DrawVisibility
     uint drawVisibility[];
 };
 
+layout(binding = 5) uniform sampler2D depthPyramid;
+
+// 2D Polyhedral Bounds of a Clipped, Perspective-Projected 3D Sphere. Michael Mare Morgan McGuire. 2013
+bool projectedSphere(vec3 C, float r, float zNear, float P00, float P11, out vec4 aabb)
+{
+    if (C.z < r + zNear) 
+    {
+        return false;
+    }
+
+    vec2 cx = -C.xz;
+    vec2 vx = vec2(sqrt(dot(cx, cx) - r * r), r) / length(cx);
+    vec2 minx = mat2(vx.x, vx.y, -vx.y, vx.x) * cx;
+    vec2 maxx = mat2(vx.x, -vx.y, vx.y, vx.x) * cx;
+
+    vec2 cy = -C.yz;
+    vec2 vy = vec2(sqrt(dot(cy, cy) - r * r), r) / length(cy);
+    vec2 miny = mat2(vy.x, -vy.y, vy.y, vy.x) * cy;
+    vec2 maxy = mat2(vy.x, vy.y, -vy.y, vy.x) * cy;
+
+    aabb = vec4(minx.x / minx.y * P00, miny.x / miny.y * P11, maxx.x / maxx.y * P00, maxy.x / maxy.y * P11) * vec4(0.5f, -0.5f, 0.5f, -0.5f) + vec4(0.5f);
+
+    return true;
+}
+
 void main()
 {
     uint di = gl_GlobalInvocationID.x;
@@ -48,7 +75,7 @@ void main()
         return;
     }
 
-    if(drawVisibility[di] == 0)
+    if(!LATE && drawVisibility[di] == 0)
     {
         return;
     }
@@ -67,7 +94,25 @@ void main()
 
     visible = cullData.cullingEnabled == 1 ? visible : true;
 
-    if(visible)
+    if(LATE && visible && cullData.occlusionEnabled == 1)
+    {
+        vec4 aabb;
+        if(projectedSphere(centre, radius, cullData.zNear, cullData.P00, cullData.P11, aabb))
+        {
+            float width = (aabb.z - aabb.x) * cullData.pyramidWidth;
+            float height = (aabb.w - aabb.y) * cullData.pyramidHeight;
+
+            float level = floor(log2(max(width, height)));
+
+            // Sampler is set up to do min reduction, so this computes the minimum depth of a 2x2 texel quads
+            float depth = textureLod(depthPyramid, (aabb.xy + aabb.zw) * 0.5, level).x;
+            float depthSphere = cullData.zNear / (centre.z - radius);
+
+            visible = visible && depthSphere > depth;
+        }
+    }
+
+    if(visible && (!LATE || drawVisibility[di] == 0))
     {
         uint dci = atomicAdd(drawCommandCount, 1);
 
@@ -87,5 +132,10 @@ void main()
         drawCommands[dci].firstInstance = 0;
         drawCommands[dci].taskCount = (lod.meshletCount + 31) / 32;
         drawCommands[dci].firstTask = lod.meshletOffset / 32;
+    }
+
+    if(LATE)
+    {
+        drawVisibility[di] = visible ? 1 : 0;
     }
 }
