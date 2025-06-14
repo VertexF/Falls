@@ -136,7 +136,7 @@ bool supportsPresentation(VkPhysicalDevice physicalDevice, uint32_t familyIndex)
 
 VkPhysicalDevice pickPhysicalDevice(VkPhysicalDevice* physicalDevices, uint32_t physicalDeviceCount) 
 {
-    VkPhysicalDevice discrete = 0;
+    VkPhysicalDevice preferred = 0;
     VkPhysicalDevice fallback = 0;
 
     for (uint32_t i = 0; i < physicalDeviceCount; ++i)
@@ -161,9 +161,9 @@ VkPhysicalDevice pickPhysicalDevice(VkPhysicalDevice* physicalDevices, uint32_t 
             continue;
         }
 
-        if (!discrete && props.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) 
+        if (!preferred && props.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) 
         {
-            discrete = physicalDevices[i];
+            preferred = physicalDevices[i];
         }
 
         if(!fallback)
@@ -172,7 +172,7 @@ VkPhysicalDevice pickPhysicalDevice(VkPhysicalDevice* physicalDevices, uint32_t 
         }
     }
 
-    VkPhysicalDevice result = discrete ? discrete : fallback;
+    VkPhysicalDevice result = preferred ? preferred : fallback;
 
     if (result)
     {
@@ -189,7 +189,7 @@ VkPhysicalDevice pickPhysicalDevice(VkPhysicalDevice* physicalDevices, uint32_t 
     return result;
 }
 
-VkDevice createDevice(VkInstance instance, VkPhysicalDevice physicalDevice, uint32_t familyIndex, bool meshShadingSupported)
+VkDevice createDevice(VkInstance instance, VkPhysicalDevice physicalDevice, uint32_t familyIndex, bool pushDescriptorSupported, bool checkpointsSupported, bool meshShadingSupported)
 {
     float queuePriorities[] = { 1.0f };
 
@@ -201,12 +201,21 @@ VkDevice createDevice(VkInstance instance, VkPhysicalDevice physicalDevice, uint
     std::vector<const char*> extensions =
     {
         VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-        VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME,
         VK_KHR_16BIT_STORAGE_EXTENSION_NAME,
         VK_KHR_8BIT_STORAGE_EXTENSION_NAME,
         VK_KHR_DRAW_INDIRECT_COUNT_EXTENSION_NAME,
         VK_EXT_SAMPLER_FILTER_MINMAX_EXTENSION_NAME,
     };
+
+    if (pushDescriptorSupported) 
+    {
+        extensions.push_back(VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME);
+    }
+
+    if (checkpointsSupported) 
+    {
+        extensions.push_back(VK_NV_DEVICE_DIAGNOSTIC_CHECKPOINTS_EXTENSION_NAME);
+    }
 
     if (meshShadingSupported)
     {

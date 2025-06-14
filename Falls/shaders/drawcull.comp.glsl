@@ -52,16 +52,17 @@ bool projectedSphere(vec3 C, float r, float zNear, float P00, float P11, out vec
     }
 
     vec2 cx = -C.xz;
-    vec2 vx = vec2(sqrt(dot(cx, cx) - r * r), r) / length(cx);
+    vec2 vx = vec2(sqrt(dot(cx, cx) - r * r), r);
     vec2 minx = mat2(vx.x, vx.y, -vx.y, vx.x) * cx;
     vec2 maxx = mat2(vx.x, -vx.y, vx.y, vx.x) * cx;
 
     vec2 cy = -C.yz;
-    vec2 vy = vec2(sqrt(dot(cy, cy) - r * r), r) / length(cy);
-    vec2 miny = mat2(vy.x, -vy.y, vy.y, vy.x) * cy;
-    vec2 maxy = mat2(vy.x, vy.y, -vy.y, vy.x) * cy;
+    vec2 vy = vec2(sqrt(dot(cy, cy) - r * r), r);
+    vec2 miny = mat2(vy.x, vy.y, -vy.y, vy.x) * cy;
+    vec2 maxy = mat2(vy.x, -vy.y, vy.y, vy.x) * cy;
 
-    aabb = vec4(minx.x / minx.y * P00, miny.x / miny.y * P11, maxx.x / maxx.y * P00, maxy.x / maxy.y * P11) * vec4(0.5f, -0.5f, 0.5f, -0.5f) + vec4(0.5f);
+    aabb = vec4(minx.x / minx.y * P00, miny.x / miny.y * P11, maxx.x / maxx.y * P00, maxy.x / maxy.y * P11);
+    aabb = aabb.xwzy * vec4(0.5f, -0.5f, 0.5f, -0.5f) + vec4(0.5f); //Clip space -> uv space
 
     return true;
 }
@@ -87,12 +88,12 @@ void main()
     float radius = mesh.radius * draws[di].scale;
 
     bool visible = true;
-    for(int i = 0; i < 6; ++i)
-    {
-        visible = visible && dot(cullData.frustum[i], vec4(centre, 1)) > -radius;
-    }
-
-    visible = cullData.cullingEnabled == 1 ? visible : true;
+    // the left/top/right/bottom plane culling utilise frustum symmetry to cull against two planes at the same time.
+    visible = visible && centre.z * cullData.frustum[1] - abs(centre.x) * cullData.frustum[0] > -radius;
+    visible = visible && centre.z * cullData.frustum[3] - abs(centre.y) * cullData.frustum[2] > -radius;
+    // the near/far plane culling uses camera space Z directly
+    visible = visible && centre.z + radius > cullData.zNear && centre.z - radius < cullData.zFar;
+    visible = visible || cullData.cullingEnabled == 0;
 
     if(LATE && visible && cullData.occlusionEnabled == 1)
     {
@@ -116,8 +117,10 @@ void main()
     {
         uint dci = atomicAdd(drawCommandCount, 1);
 
-        float lodDistance = log2(max(1, (distance(centre, vec3(0)) - radius)));
-        uint lodIndex = clamp(int(lodDistance), 0, int(mesh.lodCount) - 1);
+        // lod distance i = base * pow(step, i)
+        // i = log2(distance / base) / log2(step)
+        float lodIndexF = log2(length(centre) / cullData.lodBase) / log2(cullData.lodStep);
+        uint lodIndex = min(uint(max(lodIndexF + 1, 0)), mesh.lodCount - 1);
 
         lodIndex = cullData.lodEnabled == 1 ? lodIndex : 0;
 

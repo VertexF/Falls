@@ -186,9 +186,6 @@
     <CustomBuild Include="shaders\meshlet.task.glsl">
       <Filter>shaders</Filter>
     </CustomBuild>
-    <CustomBuild Include="shaders\drawculllate.comp.glsl">
-      <Filter>shaders</Filter>
-    </CustomBuild>
     <CustomBuild Include="shaders\drawreduce.comp.glsl">
       <Filter>shaders</Filter>
     </CustomBuild>
