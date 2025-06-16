@@ -1,9 +1,13 @@
 #include "common.h"
 #include "device.h"
 
+#ifdef _WIN32
+#include <Windows.h>
+#endif
+
 VkInstance createInstance()
 {
-    assert(volkGetInstanceVersion() >= VK_API_VERSION_1_1);
+    assert(volkGetInstanceVersion() >= VK_API_VERSION_1_2);
 
     VkApplicationInfo appInfo = { VK_STRUCTURE_TYPE_APPLICATION_INFO };
     appInfo.apiVersion = VK_API_VERSION_1_2;
@@ -43,16 +47,6 @@ VkInstance createInstance()
 
 VkBool32 VKAPI_CALL debugReportCallback(VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEXT objectType, uint64_t object, size_t location, int32_t messageCode, const char* pLayerPrefix, const char* pMessage, void* pUserData)
 {
-    // Validation layers don't correctly detect NonWriteable declarations for storage buffers: https://github.com/KhronosGroup/Vulkan-ValidationLayers/issues/73
-    if (strstr(pMessage, "Shader requires vertexPipelineStoresAndAtomics but is not enabled on the device"))
-        return VK_FALSE;
-
-    // Validation layers don't correctly track set assignments when using push descriptors with update templates: https//github.com/KhronosGroup/Vulkan-ValidationLayers/issues/341
-    if (strstr(pMessage, "uses set #0 but that set is not bound."))
-    {
-        return VK_FALSE;
-    }
-
     //NOTE: This get fixed, but until the feature this COMPLETELY breaks everything if not solved.
     //This gets fixed after day 15 in a random commit changing from NV shaders to EXT shaders.
     if (strstr(pMessage, "vkCreateGraphicsPipelines(): pCreateInfos[0] The pipeline is being created with a Task and Mesh shader bound, but the Mesh Shader uses DrawIndex (gl_DrawID) which will be an undefined value when reading."))
@@ -60,9 +54,10 @@ VkBool32 VKAPI_CALL debugReportCallback(VkDebugReportFlagsEXT flags, VkDebugRepo
         return VK_FALSE;
     }
 
-    // glslang adds UniformAndStorageBuffer8BitAccess capability to shaders that don't need it: https://github.com/KhronosGroup/glslang/issues/1539
-    if (strstr(pMessage, "VkPhysicalDevice8BitStorageFeaturesKHR::uniformAndStorageBuffer8BitAccess"))
+    if (strstr(pMessage, "Invalid opcode: 400 The Vulkan spec states: module must be a valid VkShaderModule handle"))
+    {
         return VK_FALSE;
+    }
 
     // This silences warnings like "For optimal performance image 0x3b layout should be VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL instead of GENERAL"
     // We'll assume other performance warnings are also not useful.
@@ -78,7 +73,7 @@ VkBool32 VKAPI_CALL debugReportCallback(VkDebugReportFlagsEXT flags, VkDebugRepo
                                 : "INFO";
 
     char message[4096];
-    snprintf(message, ARRAYSIZE(message), "%s %s\n", type, pMessage);
+    snprintf(message, COUNTOF(message), "%s %s\n", type, pMessage);
 
     printf("%s", message);
 
@@ -189,7 +184,7 @@ VkPhysicalDevice pickPhysicalDevice(VkPhysicalDevice* physicalDevices, uint32_t 
     return result;
 }
 
-VkDevice createDevice(VkInstance instance, VkPhysicalDevice physicalDevice, uint32_t familyIndex, bool pushDescriptorSupported, bool checkpointsSupported, bool meshShadingSupported)
+VkDevice createDevice(VkInstance instance, VkPhysicalDevice physicalDevice, uint32_t familyIndex, bool pushDescriptorsSupported, bool checkpointsSupported, bool meshShadingSupported)
 {
     float queuePriorities[] = { 1.0f };
 
@@ -201,13 +196,9 @@ VkDevice createDevice(VkInstance instance, VkPhysicalDevice physicalDevice, uint
     std::vector<const char*> extensions =
     {
         VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-        VK_KHR_16BIT_STORAGE_EXTENSION_NAME,
-        VK_KHR_8BIT_STORAGE_EXTENSION_NAME,
-        VK_KHR_DRAW_INDIRECT_COUNT_EXTENSION_NAME,
-        VK_EXT_SAMPLER_FILTER_MINMAX_EXTENSION_NAME,
     };
 
-    if (pushDescriptorSupported) 
+    if (pushDescriptorsSupported)
     {
         extensions.push_back(VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME);
     }
@@ -225,21 +216,28 @@ VkDevice createDevice(VkInstance instance, VkPhysicalDevice physicalDevice, uint
     VkPhysicalDeviceFeatures2 features = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2 };
     features.features.multiDrawIndirect = true;
     features.features.pipelineStatisticsQuery = true;
+    features.features.shaderInt16 = true;
+    features.features.shaderInt64 = true;
 
-    //VkPhysicalDevice16BitStorageFeatures features16 = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES };
-    //features16.storageBuffer16BitAccess = true;
+    VkPhysicalDeviceVulkan11Features features11 = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES };
+    features11.storageBuffer16BitAccess = true;
+    features11.shaderDrawParameters = true;
 
-    VkPhysicalDevice8BitStorageFeaturesKHR features8 = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_8BIT_STORAGE_FEATURES_KHR };
-    features8.storageBuffer8BitAccess = true;
+    VkPhysicalDeviceVulkan12Features features12 = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES };
+    features12.drawIndirectCount = true;
+    features12.storageBuffer8BitAccess = true;
+    features12.uniformAndStorageBuffer8BitAccess = true;
+    features12.storagePushConstant8 = true;
+    features12.shaderFloat16 = true;
+    features12.shaderInt8 = true;
+    features12.samplerFilterMinmax = true;
+    features12.scalarBlockLayout = true;
+    features12.bufferDeviceAddress = true;
 
-    // THis will only be used if meshShadingSupported=true (see below)
+    // This will only be used if meshShadingSupported=true (see below)
     VkPhysicalDeviceMeshShaderFeaturesNV featuresMesh = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_NV };
     featuresMesh.taskShader = true;
     featuresMesh.meshShader = true;
-
-    VkPhysicalDeviceVulkan11Features feature11 = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES };
-    feature11.shaderDrawParameters = true;
-    feature11.storageBuffer16BitAccess = true;
 
     VkDeviceCreateInfo createInfo = { VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO };
     createInfo.queueCreateInfoCount = 1;
@@ -249,16 +247,12 @@ VkDevice createDevice(VkInstance instance, VkPhysicalDevice physicalDevice, uint
     createInfo.enabledExtensionCount = uint32_t(extensions.size());
 
     createInfo.pNext = &features;
-    features.pNext = &features8;
+    features.pNext = &features11;
+    features11.pNext = &features12;
 
     if (meshShadingSupported)
     {
-        features8.pNext = &featuresMesh;
-        featuresMesh.pNext = &feature11;
-    }
-    else 
-    {
-        features8.pNext = &feature11;
+        features12.pNext = &featuresMesh;
     }
 
     VkDevice device = 0;

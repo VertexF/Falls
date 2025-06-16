@@ -51,7 +51,8 @@ void main()
     uint ti = gl_LocalInvocationID.x;
     uint mgi = gl_WorkGroupID.x;
 
-    MeshDraw meshDraw = draws[drawCommands[gl_DrawIDARB].drawID];
+    uint drawID = drawCommands[gl_DrawIDARB].drawID;
+    MeshDraw meshDraw = draws[drawID];
 
     //The 32 + ti is the task shader offset into the mesh shader index. 
     //If you multiply the mesh shader group you get the mesh shader index in a particular group.

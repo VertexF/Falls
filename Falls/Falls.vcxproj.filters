@@ -100,9 +100,6 @@
     <ClCompile Include="..\extern\meshoptimizer\src\vfetchoptimizer.cpp">
       <Filter>meshoptimizer</Filter>
     </ClCompile>
-    <ClCompile Include="..\extern\meshoptimizer\demo\objparser.cpp">
-      <Filter>meshoptimizer</Filter>
-    </ClCompile>
     <ClCompile Include="..\extern\volk\volk.c">
       <Filter>volk</Filter>
     </ClCompile>
@@ -111,6 +108,13 @@
     <ClCompile Include="resources.cpp" />
     <ClCompile Include="shaders.cpp" />
     <ClCompile Include="swapchain.cpp" />
+    <ClCompile Include="fast_obj.cpp" />
+    <ClCompile Include="..\extern\meshoptimizer\src\allocator.cpp">
+      <Filter>meshoptimizer</Filter>
+    </ClCompile>
+    <ClCompile Include="..\extern\meshoptimizer\src\spatialorder.cpp">
+      <Filter>meshoptimizer</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\extern\glfw\src\egl_context.h">
@@ -138,9 +142,6 @@
       <Filter>glfw</Filter>
     </ClInclude>
     <ClInclude Include="..\extern\meshoptimizer\src\meshoptimizer.h">
-      <Filter>meshoptimizer</Filter>
-    </ClInclude>
-    <ClInclude Include="..\extern\meshoptimizer\demo\objparser.h">
       <Filter>meshoptimizer</Filter>
     </ClInclude>
     <ClInclude Include="..\extern\volk\volk.h">

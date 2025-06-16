@@ -102,14 +102,14 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;GLM_FORCE_XYZW;WIN32_LEAN_AND_MEAN;NOMINMAX;_GLFW_WIN32;VK_USE_PLATFORM_WIN32_KHR;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>../extern/glm;../data;../extern/meshoptimizer/src;../extern/meshoptimizer/demo;../extern/volk;../extern/glfw/include;$(VULKAN_SDK)\Include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../extern/glm;../data;../extern/meshoptimizer/src;../extern/fast_obj;../extern/volk;../extern/glfw/include;$(VULKAN_SDK)\Include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <CustomBuild>
-      <Command>$(VULKAN_SDK)\Bin\glslangValidator %(FullPath) -V --target-env vulkan1.2 -o shaders/%(Filename).spv</Command>
+      <Command>"$(VULKAN_SDK)\Bin\glslangValidator" "%(FullPath)" -V --target-env vulkan1.2 -o shaders/%(Filename).spv</Command>
       <Outputs>shaders/%(Filename).spv</Outputs>
       <AdditionalInputs>shaders/*.h</AdditionalInputs>
       <BuildInParallel>true</BuildInParallel>
@@ -123,14 +123,14 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;GLM_FORCE_XYZW;WIN32_LEAN_AND_MEAN;NOMINMAX;_GLFW_WIN32;VK_USE_PLATFORM_WIN32_KHR;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>../extern/glm;../data;../extern/meshoptimizer/src;../extern/meshoptimizer/demo;../extern/volk;../extern/glfw/include;$(VULKAN_SDK)\Include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../extern/glm;../data;../extern/meshoptimizer/src;../extern/fast_obj;../extern/volk;../extern/glfw/include;$(VULKAN_SDK)\Include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <CustomBuild>
-      <Command>$(VULKAN_SDK)\Bin\glslangValidator %(FullPath) -V --target-env vulkan1.2 -o shaders/%(Filename).spv</Command>
+      <Command>"$(VULKAN_SDK)\Bin\glslangValidator" "%(FullPath)" -V --target-env vulkan1.2 -o shaders/%(Filename).spv</Command>
     </CustomBuild>
     <CustomBuild>
       <Outputs>shaders/%(Filename).spv</Outputs>
@@ -156,13 +156,14 @@
     <ClCompile Include="..\extern\glfw\src\win32_time.c" />
     <ClCompile Include="..\extern\glfw\src\win32_window.c" />
     <ClCompile Include="..\extern\glfw\src\window.c" />
-    <ClCompile Include="..\extern\meshoptimizer\demo\objparser.cpp" />
+    <ClCompile Include="..\extern\meshoptimizer\src\allocator.cpp" />
     <ClCompile Include="..\extern\meshoptimizer\src\clusterizer.cpp" />
     <ClCompile Include="..\extern\meshoptimizer\src\indexcodec.cpp" />
     <ClCompile Include="..\extern\meshoptimizer\src\indexgenerator.cpp" />
     <ClCompile Include="..\extern\meshoptimizer\src\overdrawanalyzer.cpp" />
     <ClCompile Include="..\extern\meshoptimizer\src\overdrawoptimizer.cpp" />
     <ClCompile Include="..\extern\meshoptimizer\src\simplifier.cpp" />
+    <ClCompile Include="..\extern\meshoptimizer\src\spatialorder.cpp" />
     <ClCompile Include="..\extern\meshoptimizer\src\stripifier.cpp" />
     <ClCompile Include="..\extern\meshoptimizer\src\vcacheanalyzer.cpp" />
     <ClCompile Include="..\extern\meshoptimizer\src\vcacheoptimizer.cpp" />
@@ -172,6 +173,7 @@
     <ClCompile Include="..\extern\volk\volk.c" />
     <ClCompile Include="device.cpp" />
     <ClCompile Include="Falls.cpp" />
+    <ClCompile Include="fast_obj.cpp" />
     <ClCompile Include="resources.cpp" />
     <ClCompile Include="shaders.cpp" />
     <ClCompile Include="swapchain.cpp" />
@@ -185,7 +187,6 @@
     <ClInclude Include="..\extern\glfw\src\wgl_context.h" />
     <ClInclude Include="..\extern\glfw\src\win32_joystick.h" />
     <ClInclude Include="..\extern\glfw\src\win32_platform.h" />
-    <ClInclude Include="..\extern\meshoptimizer\demo\objparser.h" />
     <ClInclude Include="..\extern\meshoptimizer\src\meshoptimizer.h" />
     <ClInclude Include="..\extern\volk\volk.h" />
     <ClInclude Include="common.h" />

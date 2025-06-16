@@ -70,7 +70,8 @@ void main()
     //and the result that they wrote in the taskNV block
     uint mi = meshletIndices[gl_WorkGroupID.x];
 
-    MeshDraw meshDraw = draws[drawCommands[gl_DrawIDARB].drawID];
+    uint drawID = drawCommands[gl_DrawIDARB].drawID;
+    MeshDraw meshDraw = draws[drawID];
 
     uint vertexCount = uint(meshlets[mi].vertexCount);
     uint triangleCount = uint(meshlets[mi].triangleCount);

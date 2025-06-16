@@ -14,7 +14,7 @@
 
 #include <GLFW/glfw3.h>
 #include <GLFW/glfw3native.h>
-#include <objparser.h>
+#include <fast_obj.h>
 #include <meshoptimizer.h>
 
 #define VSYNC 0
@@ -97,7 +97,7 @@ VkFramebuffer createFramebuffer(VkDevice device, VkRenderPass renderPass, VkImag
 
     VkFramebufferCreateInfo createInfo = { VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO };
     createInfo.renderPass = renderPass;
-    createInfo.attachmentCount = ARRAYSIZE(attachments);
+    createInfo.attachmentCount = COUNTOF(attachments);
     createInfo.pAttachments = attachments;
     createInfo.width = width;
     createInfo.height = height;
@@ -211,6 +211,8 @@ struct alignas(16) DrawCullData
     int cullingEnabled;
     int lodEnabled;
     int occlusionEnabled;
+
+    int lateWorkaroundAMD;
 };
 
 struct alignas(16) DepthReduceData 
@@ -243,7 +245,7 @@ size_t appendMeshlets(Geometry& result, const std::vector<Vertex>& vertices, con
             result.meshletData.push_back(indexGroup[i]);
         }
 
-        meshopt_Bounds bounds = meshopt_computeMeshletBounds(meshlet, &vertices[0].vx, vertices.size(), sizeof(Vertex));
+        meshopt_Bounds bounds = meshopt_computeMeshletBounds(&meshlet, &vertices[0].vx, vertices.size(), sizeof(Vertex));
 
         Meshlet m = {};
         m.dataOffset = uint32_t(dataOffset);
@@ -274,39 +276,72 @@ size_t appendMeshlets(Geometry& result, const std::vector<Vertex>& vertices, con
     return meshlets.size();
 }
 
-bool loadMesh(Geometry& result, const char* path, bool buildMeshlets) 
+bool loadObj(std::vector<Vertex>& vertices, const char* path)
 {
-    ObjFile file;
-    if (!objParseFile(file, path)) 
+    fastObjMesh* obj = fast_obj_read(path);
+    if (!obj)
     {
         return false;
     }
 
-    size_t indexCount = file.f_size / 3;
+    size_t indexCount = 0;
 
-    std::vector<Vertex> triangleVertices(indexCount);
-
-    for (size_t i = 0; i < indexCount; ++i) 
+    for (unsigned int i = 0; i < obj->face_count; ++i)
     {
-        Vertex& v = triangleVertices[i];
-
-        int vi =  file.f[i * 3 + 0];
-        int vti = file.f[i * 3 + 1];
-        int vni = file.f[i * 3 + 2];
-
-        float nx = vni < 0 ? 0.f : file.vn[vni * 3 + 0];
-        float ny = vni < 0 ? 1.f : file.vn[vni * 3 + 1];
-        float nz = vni < 0 ? 0.f : file.vn[vni * 3 + 2];
-
-        v.vx = file.v[vi * 3 + 0];
-        v.vy = file.v[vi * 3 + 1];
-        v.vz = file.v[vi * 3 + 2];
-        v.nx = uint8_t(nx * 127.f + 127.5f); 
-        v.ny = uint8_t(ny * 127.f + 127.5f); 
-        v.nz = uint8_t(nz * 127.f + 127.5f); 
-        v.tu = meshopt_quantizeHalf(vti < 0 ? 0.f : file.vt[vti * 3 + 0]);
-        v.tv = meshopt_quantizeHalf(vti < 0 ? 0.f : file.vt[vti * 3 + 1]);
+        indexCount += 3 * (obj->face_vertices[i] - 2);
     }
+
+    vertices.resize(indexCount);
+
+    size_t vertexOffset = 0;
+    size_t indexOffset = 0;
+
+    for (unsigned int i = 0; i < obj->face_count; ++i)
+    {
+        for (unsigned int j = 0; j < obj->face_vertices[i]; ++j)
+        {
+            fastObjIndex gi = obj->indices[indexOffset + j];
+
+            // triangulate polygon on the fly; offset-3 is always the first polygon vertex
+            if (j >= 3)
+            {
+                vertices[vertexOffset + 0] = vertices[vertexOffset - 3];
+                vertices[vertexOffset + 1] = vertices[vertexOffset - 1];
+                vertexOffset += 2;
+            }
+
+            Vertex& v = vertices[vertexOffset++];
+
+            v.vx = obj->positions[gi.p * 3 + 0];
+            v.vy = obj->positions[gi.p * 3 + 1];
+            v.vz = obj->positions[gi.p * 3 + 2];
+            v.nx = uint8_t(obj->normals[gi.n * 3 + 0] * 127.f + 127.5f);
+            v.ny = uint8_t(obj->normals[gi.n * 3 + 1] * 127.f + 127.5f);
+            v.nz = uint8_t(obj->normals[gi.n * 3 + 2] * 127.f + 127.5f);
+            v.tu = meshopt_quantizeHalf(obj->texcoords[gi.t * 2 + 0]);
+            v.tv = meshopt_quantizeHalf(obj->texcoords[gi.t * 2 + 1]);
+        }
+
+        indexOffset += obj->face_vertices[i];
+    }
+
+    assert(vertexOffset == indexCount);
+
+    fast_obj_destroy(obj);
+
+    return true;
+}
+
+
+bool loadMesh(Geometry& result, const char* path, bool buildMeshlets)
+{
+    std::vector<Vertex> triangleVertices;
+    if (!loadObj(triangleVertices, path)) 
+    {
+        return false;
+    }
+
+    size_t indexCount = triangleVertices.size();
 
     std::vector<uint32_t> remap(indexCount);
     size_t vertexCount = meshopt_generateVertexRemap(remap.data(), 0, indexCount, triangleVertices.data(), indexCount, sizeof(Vertex));
@@ -346,7 +381,7 @@ bool loadMesh(Geometry& result, const char* path, bool buildMeshlets)
     mesh.radius = radius;
 
     std::vector<uint32_t> lodIndices = indices;
-    while (mesh.lodCount < ARRAYSIZE(mesh.lods)) 
+    while (mesh.lodCount < COUNTOF(mesh.lods)) 
     {
         MeshLod& lod = mesh.lods[mesh.lodCount++];
 
@@ -358,10 +393,10 @@ bool loadMesh(Geometry& result, const char* path, bool buildMeshlets)
         lod.meshletOffset = uint32_t(result.meshlets.size());
         lod.meshletCount = buildMeshlets ? uint32_t(appendMeshlets(result, vertices, lodIndices)) : 0;
 
-        if (mesh.lodCount < ARRAYSIZE(mesh.lods)) 
+        if (mesh.lodCount < COUNTOF(mesh.lods)) 
         {
             size_t nextIndicesTarget = size_t(double(lodIndices.size()) * 0.75);
-            size_t nextIndices = meshopt_simplify(lodIndices.data(), lodIndices.data(), lodIndices.size(), &vertices[0].vx, vertices.size(), sizeof(Vertex), nextIndicesTarget, 1e-4f);
+            size_t nextIndices = meshopt_simplify(lodIndices.data(), lodIndices.data(), lodIndices.size(), &vertices[0].vx, vertices.size(), sizeof(Vertex), nextIndicesTarget, 1e-2f);
             assert(nextIndices <= lodIndices.size());
 
             // we've reached the error bound
@@ -384,7 +419,7 @@ void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
 {
     if (action == GLFW_PRESS)
     {
-        if (key == GLFW_KEY_R)
+        if (key == GLFW_KEY_M)
         {
             meshShadingEnabled = !meshShadingEnabled;
         }
@@ -457,7 +492,7 @@ int main(int argc, const char** argv)
     VkInstance instance = createInstance();
     assert(instance);
 
-    volkLoadInstance(instance);
+    volkLoadInstanceOnly(instance);
 
 #ifdef _DEBUG
     VkDebugReportCallbackEXT debugCallback = registerDebugCallback(instance);
@@ -488,8 +523,6 @@ int main(int argc, const char** argv)
         }
     }
 
-    //pushDescriptorsSupported = false;
-
     meshShadingEnabled = meshShadingSupported;
 
     VkPhysicalDeviceProperties props = {};
@@ -501,6 +534,8 @@ int main(int argc, const char** argv)
 
     VkDevice device = createDevice(instance, physicalDevice, familyIndex, pushDescriptorsSupported, checkpointsSupported, meshShadingSupported);
     assert(device);
+
+    volkLoadDevice(device);
 
     GLFWwindow* window = glfwCreateWindow(1024, 768, "Falls", 0, 0);
     assert(window);
@@ -532,7 +567,7 @@ int main(int argc, const char** argv)
     VkRenderPass renderPassLate = createRenderPass(device, swapchainFormat, depthFormat, /*late=*/ true);
     assert(renderPassLate);
 
-    VkSampler depthSampler = createSampler(device, VK_SAMPLER_REDUCTION_MODE_MIN_EXT);
+    VkSampler depthSampler = createSampler(device, VK_SAMPLER_REDUCTION_MODE_MIN);
     assert(depthSampler);
 
     bool rcs = false;
@@ -569,6 +604,7 @@ int main(int argc, const char** argv)
 
     Program drawcullProgram = createProgram(device, VK_PIPELINE_BIND_POINT_COMPUTE, { &drawcullCS }, sizeof(DrawCullData), pushDescriptorsSupported);
     VkPipeline drawcullPipeline = createComputePipeline(device, pipelineCache, drawcullCS, drawcullProgram.layout, { /*LATE=*/false });
+
     VkPipeline drawculllatePipeline = createComputePipeline(device, pipelineCache, drawcullCS, drawcullProgram.layout, { /*LATE=*/true });
 
     Program depthReduceProgram = createProgram(device, VK_PIPELINE_BIND_POINT_COMPUTE, { &depthreduceCS }, sizeof(DepthReduceData), pushDescriptorsSupported);
@@ -630,7 +666,7 @@ int main(int argc, const char** argv)
         VkDescriptorPoolCreateInfo poolInfo = { VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO };
 
         poolInfo.maxSets = descriptorCount;
-        poolInfo.poolSizeCount = ARRAYSIZE(poolSizes);
+        poolInfo.poolSizeCount = COUNTOF(poolSizes);
         poolInfo.pPoolSizes = poolSizes;
 
         VK_CHECK(vkCreateDescriptorPool(device, &poolInfo, 0, &descriptorPool));
@@ -722,10 +758,10 @@ int main(int argc, const char** argv)
     bool dvbCleared = false;
 
     Buffer dcb = {};
-    createBuffer(dcb, device, memoryProperties, 128 * 1024 * 1024, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    createBuffer(dcb, device, memoryProperties, 128 * 1024 * 1024, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
     Buffer dccb = {};
-    createBuffer(dccb, device, memoryProperties, 4, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    createBuffer(dccb, device, memoryProperties, 4, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
     uploadBuffer(device, commandPool, commandBuffer, queue, db, scratch, draws.data(), draws.size() * sizeof(MeshDraw));
 
@@ -829,7 +865,7 @@ int main(int argc, const char** argv)
             VK_CHECKPOINT("dvb cleared");
         }
 
-        float zNear = 0.01f;
+        float zNear = 0.5f;
         mat4 projection = perspectiveProjection(glm::radians(70.f), float(swapchain.width) / float(swapchain.height), zNear);
 
         mat4 projectionT = transpose(projection);
@@ -968,7 +1004,7 @@ int main(int argc, const char** argv)
                     bufferBarrier(dccb.buffer, VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_INDIRECT_COMMAND_READ_BIT),
                 };
 
-                vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT, 0, 0, 0, ARRAYSIZE(cullBarrier), cullBarrier, 0, 0);
+                vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT, 0, 0, 0, COUNTOF(cullBarrier), cullBarrier, 0, 0);
 
                 vkCmdWriteTimestamp(commandBuffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, queryPoolTimestamp, timestamp + 1);
             };
@@ -976,6 +1012,8 @@ int main(int argc, const char** argv)
         auto render = [&](VkRenderPass renderPass, uint32_t clearValueCount, const VkClearValue* clearValues, uint32_t query, const char* phase)
             {
                 VK_CHECKPOINT(phase);
+
+                vkCmdBeginQuery(commandBuffer, queryPoolPipeline, query, 0);
 
                 VkRenderPassBeginInfo passBeginInfo = { VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO };
                 passBeginInfo.renderPass = renderPass;
@@ -1017,7 +1055,7 @@ int main(int argc, const char** argv)
                     vkCmdBindIndexBuffer(commandBuffer, ib.buffer, 0, VK_INDEX_TYPE_UINT32);
 
                     vkCmdPushConstants(commandBuffer, meshProgram.layout, meshProgram.pushConstantStages, 0, sizeof(globals), &globals);
-                    vkCmdDrawIndexedIndirectCountKHR(commandBuffer, dcb.buffer, offsetof(MeshDrawCommand, indirect), dccb.buffer, 0, uint32_t(draws.size()), sizeof(MeshDrawCommand));
+                    vkCmdDrawIndexedIndirectCount(commandBuffer, dcb.buffer, offsetof(MeshDrawCommand, indirect), dccb.buffer, 0, uint32_t(draws.size()), sizeof(MeshDrawCommand));
                 }
 
                 VK_CHECKPOINT("after draw");
@@ -1039,7 +1077,7 @@ int main(int argc, const char** argv)
                     imageBarrier(depthPyramid.image, 0, VK_ACCESS_SHADER_READ_BIT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL),
                 };
 
-                vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_DEPENDENCY_BY_REGION_BIT, 0, 0, 0, 0, ARRAYSIZE(depthReadBarriers), depthReadBarriers);
+                vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_DEPENDENCY_BY_REGION_BIT, 0, 0, 0, 0, COUNTOF(depthReadBarriers), depthReadBarriers);
 
                 vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, depthreducePipeline);
 
@@ -1082,7 +1120,7 @@ int main(int argc, const char** argv)
             imageBarrier(depthTarget.image, 0, 0, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_ASPECT_DEPTH_BIT)
         };
 
-        vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT, VK_DEPENDENCY_BY_REGION_BIT, 0, 0, 0, 0, ARRAYSIZE(renderBeginBarrier), renderBeginBarrier);
+        vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT, VK_DEPENDENCY_BY_REGION_BIT, 0, 0, 0, 0, COUNTOF(renderBeginBarrier), renderBeginBarrier);
 
         vkCmdResetQueryPool(commandBuffer, queryPoolPipeline, 0, 4);
 
@@ -1093,15 +1131,17 @@ int main(int argc, const char** argv)
         VK_CHECKPOINT("frame");
 
         // early cull: frustum cull & fill objects that *were* visible last frame.
+        cullData.lateWorkaroundAMD = 0;
         cull(drawcullPipeline, 2, "early cull");
 
         // early render: render objects that were visible last frame.
-        render(renderPass, ARRAYSIZE(clearValues), clearValues, 0, "early render");
+        render(renderPass, COUNTOF(clearValues), clearValues, 0, "early render");
 
         // depth pyramid generation
         pyramid();
 
         // late cull: frustum + occlusion  cull & fill objects that were *not* visible late frame
+        cullData.lateWorkaroundAMD = 1;
         cull(drawculllatePipeline, 6, "late cull");
 
         // late render: render objects that are visible this frame but weren't  draw in early pass.
@@ -1113,7 +1153,7 @@ int main(int argc, const char** argv)
             imageBarrier(swapchain.images[imageIndex], 0, VK_ACCESS_TRANSFER_WRITE_BIT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
         };
 
-        vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_DEPENDENCY_BY_REGION_BIT, 0, 0, 0, 0, ARRAYSIZE(copyBarriers), copyBarriers);
+        vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_DEPENDENCY_BY_REGION_BIT, 0, 0, 0, 0, COUNTOF(copyBarriers), copyBarriers);
 
         VK_CHECKPOINT("swapchain copy");
 
@@ -1186,10 +1226,10 @@ int main(int argc, const char** argv)
         VK_CHECK(wfi);
 
         uint64_t timestampResults[8] = {};
-        VK_CHECK(vkGetQueryPoolResults(device, queryPoolTimestamp, 0, ARRAYSIZE(timestampResults), sizeof(timestampResults), timestampResults, sizeof(timestampResults[0]), VK_QUERY_RESULT_64_BIT));
+        VK_CHECK(vkGetQueryPoolResults(device, queryPoolTimestamp, 0, COUNTOF(timestampResults), sizeof(timestampResults), timestampResults, sizeof(timestampResults[0]), VK_QUERY_RESULT_64_BIT));
 
         uint32_t pipelineResults[2] = {};
-        VK_CHECK(vkGetQueryPoolResults(device, queryPoolPipeline, 0, ARRAYSIZE(pipelineResults), sizeof(pipelineResults), pipelineResults, sizeof(pipelineResults[0]), 0));
+        VK_CHECK(vkGetQueryPoolResults(device, queryPoolPipeline, 0, COUNTOF(pipelineResults), sizeof(pipelineResults), pipelineResults, sizeof(pipelineResults[0]), 0));
 
         uint32_t triangleCount = pipelineResults[0] + pipelineResults[1];
 

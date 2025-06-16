@@ -7,7 +7,13 @@
 
 #include "mesh.h"
 
+#if 0
+// NOTE: this should work, but unfortunately on AMD drivers it doesn't :(
+// Because of this, we use the workaround where instead of a spec constant we use a uniform
 layout(constant_id = 0) const bool LATE = false;
+#else
+#define LATE cullData.lateWorkaroundAMD
+#endif
 
 layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 
@@ -84,7 +90,7 @@ void main()
     uint meshIndex = draws[di].meshIndex;
     Mesh mesh = meshes[meshIndex];
 
-    vec3 centre = mesh.centre * draws[di].scale + draws[di].position;
+    vec3 centre = rotateQuat(mesh.centre, draws[di].orientation) * draws[di].scale + draws[di].position;
     float radius = mesh.radius * draws[di].scale;
 
     bool visible = true;
