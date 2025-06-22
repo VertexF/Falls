@@ -1,16 +1,21 @@
 #include "common.h"
 #include "device.h"
 
+#include <stdio.h>
+
+// Synchronisation validation is enabled by default in Debug but it's rather slow
+#define SYNC_VALIDATION 1
+
 #ifdef _WIN32
 #include <Windows.h>
 #endif
 
 VkInstance createInstance()
 {
-    assert(volkGetInstanceVersion() >= VK_API_VERSION_1_2);
+    assert(volkGetInstanceVersion() >= VK_API_VERSION_1_3);
 
     VkApplicationInfo appInfo = { VK_STRUCTURE_TYPE_APPLICATION_INFO };
-    appInfo.apiVersion = VK_API_VERSION_1_2;
+    appInfo.apiVersion = VK_API_VERSION_1_3;
 
     VkInstanceCreateInfo createInfo = { VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO };
     createInfo.pApplicationInfo = &appInfo;
@@ -23,6 +28,21 @@ VkInstance createInstance()
 
     createInfo.ppEnabledLayerNames = debugLayers;
     createInfo.enabledLayerCount = sizeof(debugLayers) / sizeof(debugLayers[0]);
+
+//    VkValidationFeatureEnableEXT enabledValidationFeatures[] = 
+//    {
+//        VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT,
+//#if SYNC_VALIDATION
+//        VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT,
+//#endif
+//    };
+//
+//    VkValidationFeaturesEXT validationFeatures = { VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT };
+//    validationFeatures.enabledValidationFeatureCount = sizeof(enabledValidationFeatures) / sizeof(enabledValidationFeatures[0]);
+//    validationFeatures.pEnabledValidationFeatures = enabledValidationFeatures;
+//
+//    createInfo.pNext = &validationFeatures;
+
 #endif // !_DEBUG
 
     const char* extensions[] =
@@ -31,6 +51,9 @@ VkInstance createInstance()
 #ifdef VK_USE_PLATFORM_WIN32_KHR
         VK_KHR_WIN32_SURFACE_EXTENSION_NAME,
 #endif //VK_USE_PLATFORM_WIN32_KHR 
+#ifdef VK_USE_PLATFORM_XLIB_KHR
+        VK_KHR_XLIB_SURFACE_EXTENSION_NAME
+#endif // VK_USE_PLATFORM_XLIB_KHR
 #ifdef _DEBUG
         VK_EXT_DEBUG_REPORT_EXTENSION_NAME,
 #endif
@@ -50,11 +73,6 @@ VkBool32 VKAPI_CALL debugReportCallback(VkDebugReportFlagsEXT flags, VkDebugRepo
     //NOTE: This get fixed, but until the feature this COMPLETELY breaks everything if not solved.
     //This gets fixed after day 15 in a random commit changing from NV shaders to EXT shaders.
     if (strstr(pMessage, "vkCreateGraphicsPipelines(): pCreateInfos[0] The pipeline is being created with a Task and Mesh shader bound, but the Mesh Shader uses DrawIndex (gl_DrawID) which will be an undefined value when reading."))
-    {
-        return VK_FALSE;
-    }
-
-    if (strstr(pMessage, "Invalid opcode: 400 The Vulkan spec states: module must be a valid VkShaderModule handle"))
     {
         return VK_FALSE;
     }
@@ -151,7 +169,7 @@ VkPhysicalDevice pickPhysicalDevice(VkPhysicalDevice* physicalDevices, uint32_t 
             continue;
         }
 
-        if (props.apiVersion < VK_API_VERSION_1_2) 
+        if (props.apiVersion < VK_API_VERSION_1_3) 
         {
             continue;
         }
@@ -227,12 +245,15 @@ VkDevice createDevice(VkInstance instance, VkPhysicalDevice physicalDevice, uint
     features12.drawIndirectCount = true;
     features12.storageBuffer8BitAccess = true;
     features12.uniformAndStorageBuffer8BitAccess = true;
-    features12.storagePushConstant8 = true;
     features12.shaderFloat16 = true;
     features12.shaderInt8 = true;
     features12.samplerFilterMinmax = true;
     features12.scalarBlockLayout = true;
-    features12.bufferDeviceAddress = true;
+
+    VkPhysicalDeviceVulkan13Features features13 = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES };
+    features13.dynamicRendering = true;
+    features13.synchronization2 = true;
+    features13.maintenance4 = true;
 
     // This will only be used if meshShadingSupported=true (see below)
     VkPhysicalDeviceMeshShaderFeaturesNV featuresMesh = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_NV };
@@ -249,10 +270,11 @@ VkDevice createDevice(VkInstance instance, VkPhysicalDevice physicalDevice, uint
     createInfo.pNext = &features;
     features.pNext = &features11;
     features11.pNext = &features12;
+    features12.pNext = &features13;
 
     if (meshShadingSupported)
     {
-        features12.pNext = &featuresMesh;
+        features13.pNext = &featuresMesh;
     }
 
     VkDevice device = 0;

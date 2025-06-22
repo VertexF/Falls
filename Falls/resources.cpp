@@ -1,11 +1,15 @@
 #include "common.h"
 #include "resources.h"
 
-VkImageMemoryBarrier imageBarrier(VkImage image, VkAccessFlags srcAccessMask, VkAccessFlags dstAccessMask, VkImageLayout oldLayout, VkImageLayout newLayout, VkImageAspectFlags aspectMask)
-{
-    VkImageMemoryBarrier result = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
+#include <string.h>
 
+VkImageMemoryBarrier2 imageBarrier(VkImage image, VkPipelineStageFlags2 srcStageMask, VkAccessFlags2 srcAccessMask, VkImageLayout oldLayout, VkPipelineStageFlags2 dstStageMask, VkAccessFlags2 dstAccessMask, VkImageLayout newLayout, VkImageAspectFlags aspectMask) 
+{
+    VkImageMemoryBarrier2 result = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2 };
+
+    result.srcStageMask = srcStageMask;
     result.srcAccessMask = srcAccessMask;
+    result.dstStageMask = dstStageMask;
     result.dstAccessMask = dstAccessMask;
     result.oldLayout = oldLayout;
     result.newLayout = newLayout;
@@ -19,11 +23,13 @@ VkImageMemoryBarrier imageBarrier(VkImage image, VkAccessFlags srcAccessMask, Vk
     return result;
 }
 
-VkBufferMemoryBarrier bufferBarrier(VkBuffer buffer, VkAccessFlags srcAccessMask, VkAccessFlags dstAccessMask)
+VkBufferMemoryBarrier2 bufferBarrier(VkBuffer buffer, VkPipelineStageFlags2 srcStageMask, VkAccessFlags2 srcAccessMask, VkPipelineStageFlags2 dstStageMask, VkAccessFlags2 dstAccessMask) 
 {
-    VkBufferMemoryBarrier result = { VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER };
+    VkBufferMemoryBarrier2 result = { VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2 };
 
+    result.srcStageMask = srcStageMask;
     result.srcAccessMask = srcAccessMask;
+    result.dstStageMask = dstStageMask;
     result.dstAccessMask = dstAccessMask;
     result.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
     result.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
@@ -32,6 +38,18 @@ VkBufferMemoryBarrier bufferBarrier(VkBuffer buffer, VkAccessFlags srcAccessMask
     result.size = VK_WHOLE_SIZE;
 
     return result;
+}
+
+void pipelineBarrier(VkCommandBuffer commandBuffer, VkDependencyFlags dependencyFlags, size_t bufferBarrierCount, const VkBufferMemoryBarrier2* bufferBarriers, size_t imageBarrierCount, const VkImageMemoryBarrier2* imageBarriers) 
+{
+    VkDependencyInfo dependencyInfo = { VK_STRUCTURE_TYPE_DEPENDENCY_INFO };
+    dependencyInfo.dependencyFlags = dependencyFlags;
+    dependencyInfo.bufferMemoryBarrierCount = uint32_t(bufferBarrierCount);
+    dependencyInfo.pBufferMemoryBarriers = bufferBarriers;
+    dependencyInfo.imageMemoryBarrierCount = uint32_t(imageBarrierCount);
+    dependencyInfo.pImageMemoryBarriers = imageBarriers;
+
+    vkCmdPipelineBarrier2(commandBuffer, &dependencyInfo);
 }
 
 uint32_t selectMemoryType(const VkPhysicalDeviceMemoryProperties& memoryProperties, uint32_t memoryTypeBit, VkMemoryPropertyFlags flags)
@@ -94,6 +112,7 @@ void createBuffer(Buffer& result, VkDevice device, const VkPhysicalDeviceMemoryP
 void uploadBuffer(VkDevice device, VkCommandPool commandPool, VkCommandBuffer commandBuffer, VkQueue queue, const Buffer& buffer, const Buffer& scratch, const void* data, size_t size)
 {
     // TODO: this function is submitting a comand buffer and wating for device idle for each buffer upload; this is obviously suboptimal and we'd need to batch this later.
+    assert(size > 0);
     assert(scratch.data);
     assert(scratch.size >= size);
     memcpy(scratch.data, data, size);
@@ -107,9 +126,6 @@ void uploadBuffer(VkDevice device, VkCommandPool commandPool, VkCommandBuffer co
 
     VkBufferCopy region = { 0, 0, VkDeviceSize(size) };
     vkCmdCopyBuffer(commandBuffer, scratch.buffer, buffer.buffer, 1, &region);
-
-    VkBufferMemoryBarrier copyBarrier = bufferBarrier(buffer.buffer, VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT);
-    vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_DEPENDENCY_BY_REGION_BIT, 0, 0, 1, &copyBarrier, 0, 0);
 
     VK_CHECK(vkEndCommandBuffer(commandBuffer));
 

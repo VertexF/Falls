@@ -18,6 +18,14 @@ VkSurfaceKHR createSurface(VkInstance instance, GLFWwindow* window)
     VkSurfaceKHR surface = 0;
     VK_CHECK(vkCreateWin32SurfaceKHR(instance, &createInfo, 0, &surface));
     return surface;
+#elif defined(VK_USE_PLATFORM_XLIB_KHR)
+    VkXLibSurfaceCreateInfoKHR createInfo = { VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR };
+    createInfo.dpy = glfwGetX11Display();
+    createInfo.window = glfwGetX11Window(window);
+
+    VkSurfaceKHR surface = 0;
+    VK_CHECK(vkCreateXLibSurfaceKHR(instance, &createInfo, 0, &surface));
+    return surface;
 #else
 #error Unsupported platform
 #endif //VK_USE_PLATFORM_WIN32_KHR
