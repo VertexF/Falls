@@ -14,13 +14,13 @@ add_executable(Falls
 set_target_properties(Falls PROPERTIES CXX_STANDARD 11 CXX_STANDARD_REQUIRED YES CXX_EXTENSIONS NO)
 
 target_compile_definitions(Falls PRIVATE GLFW_INCLUDE_NONE GLM_FORCE_XYZW_ONLY GLM_FORCE_QUAT_DATA_XYZW)
-target_include_directories(Falls PRIVATE extern/fast_obj)
+target_include_directories(Falls PRIVATE extern/fast_obj "$ENV{VULKAN_SDK}/Include")
 
 if(UNIX)
-    target_compile_definitions(Falls PRIVATE VK_USE_PLATFORM_XLIB_KHR GLFW_EXPOSE_NATIVE_X11)
+    target_compile_definitions(Falls PRIVATE VK_USE_PLATFORM_XLIB_KHR GLFW_EXPOSE_NATIVE_X11 _CRT_SECURE_NO_WARNINGS)
     set(VOLK_STATIC_DEFINES "VK_USE_PLATFORM_XLIB_KHR")
 elseif(WIN32)
-    target_compile_definitions(Falls PRIVATE VK_USE_PLATFORM_WIN32_KHR GLFW_EXPOSE_NATIVE_WIN32)
+    target_compile_definitions(Falls PRIVATE VK_USE_PLATFORM_WIN32_KHR GLFW_EXPOSE_NATIVE_WIN32 _CRT_SECURE_NO_WARNINGS)
     target_compile_definitions(Falls PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
     set(VOLK_STATIC_DEFINES "VK_USE_PLATFORM_WIN32_KHR")
 endif()

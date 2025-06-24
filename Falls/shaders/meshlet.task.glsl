@@ -2,7 +2,7 @@
 
 #extension GL_EXT_shader_16bit_storage: require
 #extension GL_EXT_shader_8bit_storage: require
-#extension GL_NV_mesh_shader: require
+#extension GL_EXT_mesh_shader: require
 
 #extension GL_GOOGLE_include_directive: require
 
@@ -12,7 +12,7 @@
 
 #include "mesh.h"
 
-#define CULL 1
+#define CULL 0 //TODO
 
 layout(local_size_x = 32, local_size_y = 1, local_size_z = 1) in;
 
@@ -31,10 +31,7 @@ layout(binding = 2) readonly buffer Meshlets
     Meshlet meshlets[];
 };
 
-out taskNV block
-{
-    uint meshletIndices[32];
-};
+taskPayloadSharedEXT uint meshletIndices[32];
 
 bool coneCull(vec3 centre, float radius, vec3 coneAxis, float coneCutoff, vec3 cameraPosition)
 {
@@ -56,7 +53,7 @@ void main()
 
     //The 32 + ti is the task shader offset into the mesh shader index. 
     //If you multiply the mesh shader group you get the mesh shader index in a particular group.
-    uint mi = mgi * 32 + ti;
+    uint mi = mgi * 32 + ti + drawCommands[gl_DrawIDARB].taskOffset;
 
 #if CULL
 
@@ -84,16 +81,10 @@ void main()
 
     uint count = subgroupBallotBitCount(ballot);
 
-    if(ti == 0)
-    {
-        gl_TaskCountNV = count;
-    }
+    EmitMeshTasksEXT(count, 1, 1);
 #else
     meshletIndices[ti] = mi;
 
-    if(ti == 0)
-    {
-        gl_TaskCountNV = 32;
-    }
+    EmitMeshTasksEXT(32, 1, 1);
 #endif
 }

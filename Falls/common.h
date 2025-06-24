@@ -2,7 +2,9 @@
 
 #include <assert.h>
 
+#ifndef GLFW_EXPOSE_NATIVE_WIN32
 #define GLFW_EXPOSE_NATIVE_WIN32
+#endif 
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_MEAN_AND_LEAN
 #endif //WIN32_LEAN_AND_MEAN
