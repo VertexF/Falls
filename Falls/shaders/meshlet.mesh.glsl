@@ -46,7 +46,7 @@ layout(binding = 4) readonly buffer Vertices
     Vertex vertices[];
 };
 
-taskPayloadSharedEXT uint meshletIndices[32];
+taskPayloadSharedEXT MeshTaskPayload payload;
 
 layout(location = 0) out vec4 colour[];
 
@@ -66,10 +66,9 @@ void main()
     uint ti = gl_LocalInvocationID.x;
     //We need to index gl_WorkGroupID.x as the mesh shader index is being driven by the task shader invocations
     //and the result that they wrote in the taskNV block
-    uint mi = meshletIndices[gl_WorkGroupID.x];
+    uint mi = payload.meshletIndices[gl_WorkGroupID.x];
 
-    uint drawID = drawCommands[gl_DrawIDARB].drawID;
-    MeshDraw meshDraw = draws[drawID];
+    MeshDraw meshDraw = draws[payload.drawID];
 
     uint vertexCount = uint(meshlets[mi].vertexCount);
     uint triangleCount = uint(meshlets[mi].triangleCount);

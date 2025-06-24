@@ -70,13 +70,6 @@ VkInstance createInstance()
 
 VkBool32 VKAPI_CALL debugReportCallback(VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEXT objectType, uint64_t object, size_t location, int32_t messageCode, const char* pLayerPrefix, const char* pMessage, void* pUserData)
 {
-    //NOTE: This get fixed, but until the feature this COMPLETELY breaks everything if not solved.
-    //This gets fixed after day 15 in a random commit changing from NV shaders to EXT shaders.
-    if (strstr(pMessage, "vkCreateGraphicsPipelines(): pCreateInfos[0] The pipeline is being created with a Task and Mesh shader bound, but the Mesh Shader uses DrawIndex (gl_DrawID) which will be an undefined value when reading."))
-    {
-        return VK_FALSE;
-    }
-
     // This silences warnings like "For optimal performance image 0x3b layout should be VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL instead of GENERAL"
     // We'll assume other performance warnings are also not useful.
     if (flags & VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT) 

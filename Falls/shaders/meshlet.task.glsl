@@ -12,7 +12,7 @@
 
 #include "mesh.h"
 
-#define CULL 0 //TODO
+#define CULL 1 //TODO
 
 layout(local_size_x = 32, local_size_y = 1, local_size_z = 1) in;
 
@@ -31,12 +31,16 @@ layout(binding = 2) readonly buffer Meshlets
     Meshlet meshlets[];
 };
 
-taskPayloadSharedEXT uint meshletIndices[32];
+taskPayloadSharedEXT MeshTaskPayload payload;
 
 bool coneCull(vec3 centre, float radius, vec3 coneAxis, float coneCutoff, vec3 cameraPosition)
 {
     return dot(centre - cameraPosition, coneAxis) >= coneCutoff * length(centre - cameraPosition) + radius;
 }
+
+#if CULL
+shared int sharedCount;
+#endif
 
 //NOTE: The point of using subgroups is to allow atomic operations to happen in subgroups of the totally work group.
 //Meaning that you can say have a subgroup of 16, it then will do an add operation twice instead of 32 times over a workgroup of 32.
@@ -56,6 +60,8 @@ void main()
     uint mi = mgi * 32 + ti + drawCommands[gl_DrawIDARB].taskOffset;
 
 #if CULL
+    sharedCount = 0;
+    memoryBarrierShared();
 
     vec3 centre = rotateQuat(meshlets[mi].centre, meshDraw.orientation) * meshDraw.scale + meshDraw.position;
     float radius = meshlets[mi].radius * meshDraw.scale;
@@ -64,26 +70,21 @@ void main()
 
     bool accept = !coneCull(centre, radius, coneAxis, coneCutoff, vec3(0, 0, 0));
 
-    //The ballot is a bitmask were every 32 bit value in the uvec4 is either 1 or one telling use if this subgroup thread passed/failed.
-    uvec4 ballot = subgroupBallot(accept);
-
-    //This counts all the bitmask to tell use how many passed, apart from the current thread.
-    uint index = subgroupBallotExclusiveBitCount(ballot);
-
     //If we haven't culled the meshlet 
     if(accept)
     {
-        //we write the current meshlet index into the meshlet indices array.
-        //Meaning that say if you have 4 meshlet indexs and 2 get culled the array might look like this:
-        //[ X, 1, X, 3] meaning that only index values 1 and 3 kick off a mesh shader.
-        meshletIndices[index] = mi;
+        uint index = atomicAdd(sharedCount, 1);
+        payload.meshletIndices[index] = mi;
     }
 
-    uint count = subgroupBallotBitCount(ballot);
+    payload.drawID = drawID;
 
-    EmitMeshTasksEXT(count, 1, 1);
+    memoryBarrierShared();
+
+    EmitMeshTasksEXT(sharedCount, 1, 1);
 #else
-    meshletIndices[ti] = mi;
+    payload.drawID = drawID;
+    payload.meshletIndices[ti] = mi;
 
     EmitMeshTasksEXT(32, 1, 1);
 #endif
